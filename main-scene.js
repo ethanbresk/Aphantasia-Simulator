@@ -1,7 +1,7 @@
 import {defs, tiny} from './examples/common.js';
 
 import {Transforms_Sandbox} from "./examples/transforms-sandbox.js"
-import {Assignment2} from "./assignment2.js"
+import {Project} from "./project.js"
 // Pull these names into this module's scope for convenience:
 const {
     Vector, Vector3, vec, vec3, vec4, color, Matrix, Mat4, Light, Shape, Material, Shader, Texture, Scene,
@@ -19,13 +19,13 @@ const {
 const Minimal_Webgl_Demo = defs.Minimal_Webgl_Demo;
 
 Object.assign(defs,
-            {Transforms_Sandbox}, {Assignment2});
+            {Transforms_Sandbox}, {Project});
 
 // ******************** End extra step
 
 // (Can define Main_Scene's class here)
 
-const Main_Scene = Assignment2;
+const Main_Scene = Project;
 const Additional_Scenes = [];
 
 export {Main_Scene, Additional_Scenes, Canvas_Widget, Code_Widget, Text_Widget, defs}
