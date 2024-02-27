@@ -62,11 +62,55 @@ class Cube_Single_Strip extends Shape {
 }
 
 
+class Sphere extends Shape {
+    constructor(latitude_bands=12, longitude_bands=24) {
+        super("position", "normal", "texture_coord");
+        const vertices = [];
+        const normals = [];
+        const texCoords = [];
+        const indices = [];
+
+        for (let latNumber = 0; latNumber <= latitude_bands; latNumber++) {
+            const theta = latNumber * Math.PI / latitude_bands;
+            const sinTheta = Math.sin(theta);
+            const cosTheta = Math.cos(theta);
+
+            for (let longNumber = 0; longNumber <= longitude_bands; longNumber++) {
+                const phi = longNumber * 2 * Math.PI / longitude_bands;
+                const sinPhi = Math.sin(phi);
+                const cosPhi = Math.cos(phi);
+
+                const x = cosPhi * sinTheta;
+                const y = cosTheta;
+                const z = sinPhi * sinTheta;
+                const u = 1 - (longNumber / longitude_bands);
+                const v = 1 - (latNumber / latitude_bands);
+
+                normals.push(vec3(x, y, z));
+                texCoords.push(vec(u, v));
+                vertices.push(vec3(x, y, z));
+            }
+        }
+
+        for (let latNumber = 0; latNumber < latitude_bands; latNumber++) {
+            for (let longNumber = 0; longNumber < longitude_bands; longNumber++) {
+                const first = (latNumber * (longitude_bands + 1)) + longNumber;
+                const second = first + longitude_bands + 1;
+                indices.push(first, second, first + 1, second, second + 1, first + 1);
+            }
+        }
+
+        this.arrays.position = vertices;
+        this.arrays.normal = normals;
+        this.arrays.texture_coord = texCoords;
+        this.indices = indices;
+    }
+}
+
+
+
 class Base_Scene extends Scene {
-    /**
-     *  **Base_scene** is a Scene that can be added to any display canvas.
-     *  Setup the shapes, materials, camera, and lighting here.
-     */
+ 
     constructor() {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
@@ -75,7 +119,9 @@ class Base_Scene extends Scene {
         this.shapes = {
             'cube': new Cube(),
             'outline': new Cube_Outline(),
-            'strip': new Cube_Single_Strip()
+            'strip': new Cube_Single_Strip(),
+            'sphere': new Sphere(12, 24)
+           
         };
 
         // *** Materials
@@ -115,12 +161,7 @@ class Base_Scene extends Scene {
 }
 
 export class Project extends Base_Scene {
-    /**
-     * This Scene object can be added to any display canvas.
-     * We isolate that code so it can be experimented with on its own.
-     * This gives you a very small code sandbox for editing a simple scene, and for
-     * experimenting with matrix transformations.
-     */
+  
     set_colors() {
         // fill colors array
         for (var i = 0; i < 8; i++) {
@@ -189,10 +230,24 @@ export class Project extends Base_Scene {
         super.display(context, program_state);
         const blue = hex_color("#1a9ffa");
         let model_transform = Mat4.identity();
-
+/*
         // draw 8 cubes
         for (let i = 0; i < 8; i++) {
             model_transform = this.draw_box(context, program_state, model_transform, this.colors[i], i);
         }
+
+*/
+
+        this.shapes.sphere.draw(context, program_state, model_transform, this.materials.plastic.override({color: hex_color("#ff0000")}));
+
     }
 }
+
+
+
+
+
+
+
+
+
