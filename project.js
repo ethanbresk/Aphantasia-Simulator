@@ -92,7 +92,7 @@ export class project extends Scene {
         let rgb_value = (1 + Math.sin(2 * Math.PI / 10 * t)) / 2; 
         let sun_color = color(1, rgb_value, rgb_value, 1);
         program_state.lights = [new Light(vec4(0, 0, 0, 1), sun_color, 10 ** sun_radius)];
-        this.shapes.sun.draw(context, program_state, sun_transform, this.materials.sun.override({color: sun_color}));
+        //this.shapes.sun.draw(context, program_state, sun_transform, this.materials.sun.override({color: sun_color}));
         this.shapes.apple.draw(context, program_state, sun_transform, this.materials.sun.override({color: sun_color}));
     
         // Planetary transformations and drawing
