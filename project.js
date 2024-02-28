@@ -116,19 +116,19 @@ export class project extends Scene {
         // Planet 3
         //Muddy brown-orange (suggest color #B08040 ), 4 subdivisions, maximum diffuse and specular. The planet could (optionally) wobble on in its rotation over time (have an axis not the same as the orbit axis). The planet must have a ring. You can use the provided torus shape, scaled flatter (reduced z axis scale). The ring and planet must wobble together - so base the ring's matrix directly on the planet's matrix. Give the ring the same color as the planet and set the material ambient only (for now).
         let planet3_transform = model_transform.times(Mat4.rotation(orbital_speed / 3, 0, 1, 0)).times(Mat4.translation(11, 0, 0)).times(Mat4.rotation(Math.sin(t), 1, 0, 0));
-        this.shapes.planet3.draw(context, program_state, planet3_transform, this.materials.planet3);
+        this.shapes.apple.draw(context, program_state, planet3_transform, this.materials.planet3);
         let ring_transform = planet3_transform.times(Mat4.scale(3.5, 3.5, 0.1));
         this.shapes.ring.draw(context, program_state, ring_transform, this.materials.ring);
     
         // Planet 4
         //Soft light blue, 4 subdivisions, smooth phong, high specular. Add a moon for this planet. The moon has 1 subdivision, with flat shading, any material, and a small orbital distance around the planet
         let planet4_transform = model_transform.times(Mat4.rotation(orbital_speed / 5, 0, 1, 0)).times(Mat4.translation(14, 0, 0));
-        this.shapes.planet4.draw(context, program_state, planet4_transform, this.materials.planet4);
+        this.shapes.apple.draw(context, program_state, planet4_transform, this.materials.planet4);
     
         // Moon
         //1 subdivision, with flat shading, any material, and a small orbital distance around the planet.
         let moon_transform = planet4_transform.times(Mat4.rotation(t, 0, 1, 0)).times(Mat4.translation(-2, 0, 0));
-        this.shapes.moon.draw(context, program_state, moon_transform, this.materials.moon);
+        this.shapes.apple.draw(context, program_state, moon_transform, this.materials.moon);
     
         // Camera attachment logic remains unchanged
         if (this.attached !== undefined) {
