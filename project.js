@@ -14,6 +14,10 @@ export class project extends Scene {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
 
+        this.object_queue = [];
+
+        this.mouse_listener_added = false;
+
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
             // basic shapes
@@ -46,7 +50,7 @@ export class project extends Scene {
         }
 
         // object queue
-        this.object_queue = [];
+        this.object_queue = [ ];
 
         // mouse position
         this.mousex;
@@ -64,40 +68,39 @@ export class project extends Scene {
         this.initial_camera_location = Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
         //this.initial_camera_location = Mat4.translation(5, -10, -30);
     }
-
     draw_with_mouse(context, program_state) {
-
         let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
-        //let obj_scale = Math.random() * (3 - 1) + 1;
-        let obj_scale = 0.25;
-        let negorpos = 1 - 2 * Math.round(Math.random());
-        let obj_rot = negorpos * Math.random() * (4 - 2) + 2;
-
-        // since aquarium sphere is only so big --> set far z-axis to be closer/more forward
+        let obj_scale = 0.25; // Fixed scale for simplicity
+    
+        // Define movement attributes for the new fish
+        let direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized();
+        let speed = Math.random() * 0.05 + 0.01; // Random speed
+        let rotation = Math.random() * 2 * Math.PI; // Random rotation
+    
+        // Position calculation as before
         let z_coord = 0.97;
-
-        let pos_ndc_near = vec4(this.mousex, this.mousey, -1.0, 1.0);
         let pos_ndc_far  = vec4(this.mousex, this.mousey, z_coord, 1.0);
-        let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
         let P = program_state.projection_transform;
         let V = program_state.camera_inverse;
-        let pos_world_near = Mat4.inverse(P.times(V)).times(pos_ndc_near);
         let pos_world_far  = Mat4.inverse(P.times(V)).times(pos_ndc_far);
-        let center_world_near  = Mat4.inverse(P.times(V)).times(center_ndc_near);
-        pos_world_near.scale_by(1 / pos_world_near[3]);
         pos_world_far.scale_by(1 / pos_world_far[3]);
-        center_world_near.scale_by(1 / center_world_near[3]);
-
-        // create object
+    
+        // Create a new fish object with movement attributes
         let obj = {
             pos: pos_world_far,
             color: obj_color,
             size: obj_scale,
-            negorpos: negorpos
-        }
-
+            direction: direction,
+            speed: speed,
+            rotation: rotation
+        };
+    
+        // Add the new fish object to the queue
         this.object_queue.push(obj);
     }
+    
+    
+    
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -128,7 +131,7 @@ export class project extends Scene {
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
 
         let table_transform = model_transform
-            .times(Mat4.scale(5, 5, 5))
+            .times(Mat4.scale(8, 8, 8))
             //.times(Mat4.rotation(90,0,1,0))
         this.shapes.square.draw(context, program_state, table_transform, this.materials.water);
         //context.gl.depthMask(false);
@@ -147,77 +150,55 @@ export class project extends Scene {
    
         //this.shapes.nemo.draw(context, program_state, nemo_transform, this.materials.test);
 
-        if (this.object_queue.length > 0) {
-            for (let i = 0; i < this.object_queue.length; i++) {
-                let ts = t / 1000;
-                let obj = this.object_queue[i];
-                let position = obj.pos;
-                let size = obj.size;
-                let color = obj.color;
-                let negorpos = obj.negorpos;
-                let transform = Mat4.translation(position[0], position[1], position[2])
-                    .times(Mat4.scale(size, size, size, 0));
-
-                this.shapes.nemo.draw(context, program_state, transform, this.materials.test);
-            }
-        }
-
-        // draw with mouse
-        let canvas = context.canvas;
-        const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
-            vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
-                (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
-
-        // when user clicks --> draw object at mouse position (if they can afford it)
-        canvas.addEventListener("mousedown", e => {
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect()
-            this.mousex = mouse_position(e)[0];
-            this.mousey = mouse_position(e)[1];
-            //this.click_sound.play();
-            this.draw_with_mouse(context, program_state);
-        });
-
         const dt = program_state.animation_delta_time / 1000; // Delta time in seconds
 
-        // Update fish positions and rotations
-        this.fish_states.forEach(fish => {
-            // Move fish
-            fish.position = fish.position.plus(fish.direction.times(fish.speed * dt));
+        if (!this.mouse_listener_added) {
+            let canvas = context.canvas;
+            const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+                vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
+                    (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
     
-            // Randomly change direction occasionally
-            if (Math.random() < 0.1) { // Approximately 10% chance per frame
-                fish.direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized();
-                fish.rotation = Math.atan2(fish.direction[2], fish.direction[0]);
-            }
+            canvas.addEventListener("mousedown", e => {
+                e.preventDefault();
+                this.mousex = mouse_position(e)[0];
+                this.mousey = mouse_position(e)[1];
+                this.draw_with_mouse(context, program_state);
+            });
     
-            // Boundary check (simplified example)
-            if (Math.abs(fish.position[0]) > 5 || Math.abs(fish.position[1]) > 5 || Math.abs(fish.position[2]) > 5) {
-                fish.direction = fish.direction.times(-1); // Invert direction
-                fish.rotation += Math.PI; // Turn around
-            }
+            this.mouse_listener_added = true; // Set the flag to true
+        }
+        // Update and draw each fish
+        this.object_queue.forEach(obj => {
+            // Update position
+            obj.pos = obj.pos.plus(obj.direction.times(obj.speed * dt));
+
+            // Prepare transformation matrix for the fish
+            let transform = Mat4.translation(...obj.pos.to3())
+                .times(Mat4.rotation(obj.rotation, 0, 1, 0)) // Apply rotation
+                .times(Mat4.scale(obj.size, obj.size, obj.size)); // Apply scale
+
+            // Draw the fish
+            this.shapes.nemo.draw(context, program_state, transform, this.materials.test);
         });
 
-        /*
-        // Drawing fish
-        this.fish_states.forEach(fish => {
-            let fish_transform = Mat4.identity()
-                .times(Mat4.translation(...fish.position))
-                .times(Mat4.scale(5,5,5))
-                .times(Mat4.rotation(fish.rotation, 0, 1, 0)) // Apply rotation around y-axis
-                .times(Mat4.scale(0.1, 0.1, 0.1)); // Adjust scale as needed
-        
-            this.shapes.nemo.draw(context, program_state, fish_transform, this.materials.test);
-        });
-        */
 
+        // draw with mouse
+        // let canvas = context.canvas;
+        // const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+        //     vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
+        //         (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
 
+        // // when user clicks --> draw object at mouse position (if they can afford it)
+        // canvas.addEventListener("mousedown", e => {
+        //     e.preventDefault();
+        //     const rect = canvas.getBoundingClientRect()
+        //     this.mousex = mouse_position(e)[0];
+        //     this.mousey = mouse_position(e)[1];
+        //     //this.click_sound.play();
+        //     this.draw_with_mouse(context, program_state);
+        // });
 
-        
-   
-        
-        
-
+     
 
 
     }
