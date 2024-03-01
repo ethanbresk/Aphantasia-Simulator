@@ -1,12 +1,12 @@
 
 import {defs, tiny} from './examples/common.js';
 import { Shape_From_File } from './examples/obj-file-demo.js';
-// import { Text_Line } from './examples/text-demo.js';
-// import {Color_Phong_Shader, Shadow_Textured_Phong_Shader,Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './examples/shadow-demo-shaders.js'
+import { Text_Line } from './examples/text-demo.js';
+import {Color_Phong_Shader, Shadow_Textured_Phong_Shader,Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './examples/shadow-demo-shaders.js'
 
 
 const {
-    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
+    Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Texture, Matrix, Mat4, Light, Shape, Material, Scene,
 } = tiny;
 
 export class project extends Scene {
@@ -16,14 +16,23 @@ export class project extends Scene {
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
-            teapot: new Shape_From_File("assets/teapot.obj"),
-            apple: new Shape_From_File("assets/apple.obj"),
-            room: new Shape_From_File("assets/room.obj"),
+            // basic shapes
+            box: new defs.Cube(),
+            sphere: new defs.Subdivision_Sphere(4),
+            circle: new defs.Regular_2D_Polygon(50,50),
+            square: new defs.Square(),
+
+            // room assets
             aquarium: new Shape_From_File("assets/aquarium.obj"),
             table: new Shape_From_File("assets/table.obj"),
+
+            // fish
             goldFish: new Shape_From_File("assets/goldfish.obj"),
             nemo: new Shape_From_File("assets/nemo.obj")
         };
+
+        // textured phong
+        const textured = new defs.Textured_Phong(1);
 
         // *** Materials
         this.materials = {
@@ -31,10 +40,17 @@ export class project extends Scene {
                 {ambient: .4, diffusivity: .6, color: hex_color("#FFFF00")}),
             test2: new Material(new Gouraud_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#992828")}),
-
+            water: new Material(textured, {ambient: .5, texture: new Texture("assets/water1.jpeg")}),
             aquarium: new Material(new defs.Phong_Shader(),
-            {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)})
+                {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)})
         }
+
+        // object queue
+        this.object_queue = [];
+
+        // mouse position
+        this.mousex;
+        this.mousey;
 
         this.num_fish = 10; // Number of fish
         this.num_fish = 10; // Number of fish
@@ -45,22 +61,55 @@ export class project extends Scene {
             rotation: Math.random() * 2 * Math.PI // Random rotation around y-axis
         }));
 
-        this.initial_camera_location = Mat4.look_at(vec3(0, 30, 40), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.initial_camera_location = Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
+        //this.initial_camera_location = Mat4.translation(5, -10, -30);
     }
 
-    
+    draw_with_mouse(context, program_state) {
+
+        let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
+        //let obj_scale = Math.random() * (3 - 1) + 1;
+        let obj_scale = 0.25;
+        let negorpos = 1 - 2 * Math.round(Math.random());
+        let obj_rot = negorpos * Math.random() * (4 - 2) + 2;
+
+        // since aquarium sphere is only so big --> set far z-axis to be closer/more forward
+        let z_coord = 0.97;
+
+        let pos_ndc_near = vec4(this.mousex, this.mousey, -1.0, 1.0);
+        let pos_ndc_far  = vec4(this.mousex, this.mousey, z_coord, 1.0);
+        let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
+        let P = program_state.projection_transform;
+        let V = program_state.camera_inverse;
+        let pos_world_near = Mat4.inverse(P.times(V)).times(pos_ndc_near);
+        let pos_world_far  = Mat4.inverse(P.times(V)).times(pos_ndc_far);
+        let center_world_near  = Mat4.inverse(P.times(V)).times(center_ndc_near);
+        pos_world_near.scale_by(1 / pos_world_near[3]);
+        pos_world_far.scale_by(1 / pos_world_far[3]);
+        center_world_near.scale_by(1 / center_world_near[3]);
+
+        // create object
+        let obj = {
+            pos: pos_world_far,
+            color: obj_color,
+            size: obj_scale,
+            negorpos: negorpos
+        }
+
+        this.object_queue.push(obj);
+    }
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        this.key_triggered_button("View solar system", ["Control", "0"], () => this.attached = () => this.initial_camera_location);
-        this.new_line();
-        this.key_triggered_button("Attach to planet 1", ["Control", "1"], () => this.attached = () => this.planet_1);
-        this.key_triggered_button("Attach to planet 2", ["Control", "2"], () => this.attached = () => this.planet_2);
-        this.new_line();
-        this.key_triggered_button("Attach to planet 3", ["Control", "3"], () => this.attached = () => this.planet_3);
-        this.key_triggered_button("Attach to planet 4", ["Control", "4"], () => this.attached = () => this.planet_4);
-        this.new_line();
-        this.key_triggered_button("Attach to moon", ["Control", "m"], () => this.attached = () => this.moon);
+        // this.key_triggered_button("View solar system", ["Control", "0"], () => this.attached = () => this.initial_camera_location);
+        // this.new_line();
+        // this.key_triggered_button("Attach to planet 1", ["Control", "1"], () => this.attached = () => this.planet_1);
+        // this.key_triggered_button("Attach to planet 2", ["Control", "2"], () => this.attached = () => this.planet_2);
+        // this.new_line();
+        // this.key_triggered_button("Attach to planet 3", ["Control", "3"], () => this.attached = () => this.planet_3);
+        // this.key_triggered_button("Attach to planet 4", ["Control", "4"], () => this.attached = () => this.planet_4);
+        // this.new_line();
+        // this.key_triggered_button("Attach to moon", ["Control", "m"], () => this.attached = () => this.moon);
     }
     
     display(context, program_state) {
@@ -70,9 +119,6 @@ export class project extends Scene {
             program_state.set_camera(this.initial_camera_location);
         }
 
-        
-
-
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, .1, 1000);
     
         const t = program_state.animation_time / 1000; // Get time in seconds
@@ -81,17 +127,19 @@ export class project extends Scene {
         const light_position = vec4(0, 5, 5, 1);
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
 
-        let table_transform = model_transform.times(Mat4.scale(5, 5, 5))
-        //this.shapes.table.draw(context, program_state, table_transform, this.materials.test);
-       // context.gl.depthMask(false);
+        let table_transform = model_transform
+            .times(Mat4.scale(5, 5, 5))
+            //.times(Mat4.rotation(90,0,1,0))
+        this.shapes.square.draw(context, program_state, table_transform, this.materials.water);
+        //context.gl.depthMask(false);
         let aquarium_transform = model_transform
             .times(Mat4.scale(5, 5, 5))
             //.times(Mat4.rotation(90,1,0,0))
             .times(Mat4.translation(0,2,0))
-       this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.aquarium);
-       //context.gl.depthMask(true); 
+        //this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.aquarium);
+        //context.gl.depthMask(true);
 
-       let nemo_transform = Mat4.identity()
+        let nemo_transform = Mat4.identity()
             .times(Mat4.translation(0, 2, 0)) // Move to the aquarium's position
             .times(Mat4.scale(5, 5, 5)) // Apply the same scale as the aquarium to ensure consistent positioning
             .times(Mat4.translation(2, 2.5, 1)) // Move nemo inside the aquarium. Adjust these values as needed.
@@ -99,6 +147,36 @@ export class project extends Scene {
    
         //this.shapes.nemo.draw(context, program_state, nemo_transform, this.materials.test);
 
+        if (this.object_queue.length > 0) {
+            for (let i = 0; i < this.object_queue.length; i++) {
+                let ts = t / 1000;
+                let obj = this.object_queue[i];
+                let position = obj.pos;
+                let size = obj.size;
+                let color = obj.color;
+                let negorpos = obj.negorpos;
+                let transform = Mat4.translation(position[0], position[1], position[2])
+                    .times(Mat4.scale(size, size, size, 0));
+
+                this.shapes.nemo.draw(context, program_state, transform, this.materials.test);
+            }
+        }
+
+        // draw with mouse
+        let canvas = context.canvas;
+        const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+            vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
+                (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
+
+        // when user clicks --> draw object at mouse position (if they can afford it)
+        canvas.addEventListener("mousedown", e => {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect()
+            this.mousex = mouse_position(e)[0];
+            this.mousey = mouse_position(e)[1];
+            //this.click_sound.play();
+            this.draw_with_mouse(context, program_state);
+        });
 
         const dt = program_state.animation_delta_time / 1000; // Delta time in seconds
 
@@ -120,6 +198,7 @@ export class project extends Scene {
             }
         });
 
+        /*
         // Drawing fish
         this.fish_states.forEach(fish => {
             let fish_transform = Mat4.identity()
@@ -130,7 +209,7 @@ export class project extends Scene {
         
             this.shapes.nemo.draw(context, program_state, fish_transform, this.materials.test);
         });
-
+        */
 
 
 
