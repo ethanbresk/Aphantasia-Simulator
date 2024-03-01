@@ -20,19 +20,35 @@ export class project extends Scene {
             apple: new Shape_From_File("assets/apple.obj"),
             room: new Shape_From_File("assets/room.obj"),
             aquarium: new Shape_From_File("assets/aquarium.obj"),
-            table: new Shape_From_File("assets/table.obj")
+            table: new Shape_From_File("assets/table.obj"),
+            goldFish: new Shape_From_File("assets/goldfish.obj"),
+            nemo: new Shape_From_File("assets/nemo.obj")
         };
 
         // *** Materials
         this.materials = {
             test: new Material(new defs.Phong_Shader(),
-                {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
+                {ambient: .4, diffusivity: .6, color: hex_color("#FFFF00")}),
             test2: new Material(new Gouraud_Shader(),
-                {ambient: .4, diffusivity: .6, color: hex_color("#992828")})
+                {ambient: .4, diffusivity: .6, color: hex_color("#992828")}),
+
+            aquarium: new Material(new defs.Phong_Shader(),
+            {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)})
         }
 
-        this.initial_camera_location = Mat4.look_at(vec3(0, 5, 15), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.num_fish = 10; // Number of fish
+        this.num_fish = 10; // Number of fish
+        this.fish_states = Array.from({length: this.num_fish}, () => ({
+            position: vec3(Math.random()*10-5, Math.random()*5, Math.random()*10-5), // Random position
+            direction: vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized(), // Random direction
+            speed: Math.random() * 0.05 + 0.01, // Random speed
+            rotation: Math.random() * 2 * Math.PI // Random rotation around y-axis
+        }));
+
+        this.initial_camera_location = Mat4.look_at(vec3(0, 30, 40), vec3(0, 0, 0), vec3(0, 1, 0));
     }
+
+    
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -53,6 +69,10 @@ export class project extends Scene {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             program_state.set_camera(this.initial_camera_location);
         }
+
+        
+
+
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, .1, 1000);
     
         const t = program_state.animation_time / 1000; // Get time in seconds
@@ -62,13 +82,64 @@ export class project extends Scene {
         program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
 
         let table_transform = model_transform.times(Mat4.scale(5, 5, 5))
-        this.shapes.table.draw(context, program_state, table_transform, this.materials.test);
-
+        //this.shapes.table.draw(context, program_state, table_transform, this.materials.test);
+       // context.gl.depthMask(false);
         let aquarium_transform = model_transform
-            .times(Mat4.scale(1.5, 1.5, 1.5))
+            .times(Mat4.scale(5, 5, 5))
             //.times(Mat4.rotation(90,1,0,0))
             .times(Mat4.translation(0,2,0))
-        this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.test);
+       this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.aquarium);
+       //context.gl.depthMask(true); 
+
+       let nemo_transform = Mat4.identity()
+            .times(Mat4.translation(0, 2, 0)) // Move to the aquarium's position
+            .times(Mat4.scale(5, 5, 5)) // Apply the same scale as the aquarium to ensure consistent positioning
+            .times(Mat4.translation(2, 2.5, 1)) // Move nemo inside the aquarium. Adjust these values as needed.
+            .times(Mat4.scale(0.1, 0.1, 0.1)); // Scale down nemo if necessary
+   
+        //this.shapes.nemo.draw(context, program_state, nemo_transform, this.materials.test);
+
+
+        const dt = program_state.animation_delta_time / 1000; // Delta time in seconds
+
+        // Update fish positions and rotations
+        this.fish_states.forEach(fish => {
+            // Move fish
+            fish.position = fish.position.plus(fish.direction.times(fish.speed * dt));
+    
+            // Randomly change direction occasionally
+            if (Math.random() < 0.1) { // Approximately 10% chance per frame
+                fish.direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized();
+                fish.rotation = Math.atan2(fish.direction[2], fish.direction[0]);
+            }
+    
+            // Boundary check (simplified example)
+            if (Math.abs(fish.position[0]) > 5 || Math.abs(fish.position[1]) > 5 || Math.abs(fish.position[2]) > 5) {
+                fish.direction = fish.direction.times(-1); // Invert direction
+                fish.rotation += Math.PI; // Turn around
+            }
+        });
+
+        // Drawing fish
+        this.fish_states.forEach(fish => {
+            let fish_transform = Mat4.identity()
+                .times(Mat4.translation(...fish.position))
+                .times(Mat4.scale(5,5,5))
+                .times(Mat4.rotation(fish.rotation, 0, 1, 0)) // Apply rotation around y-axis
+                .times(Mat4.scale(0.1, 0.1, 0.1)); // Adjust scale as needed
+        
+            this.shapes.nemo.draw(context, program_state, fish_transform, this.materials.test);
+        });
+
+
+
+
+        
+   
+        
+        
+
+
 
     }
 }

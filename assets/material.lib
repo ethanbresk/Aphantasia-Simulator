@@ -1,0 +1,67 @@
+# Aspose.3D Wavefront OBJ Exporter
+# Copyright 2004-2024 Aspose Pty Ltd.
+# File created: 03/01/2024 02:30:29
+
+newmtl 01 - Default
+	Ka 0.5882353 0.5882353 0.5882353
+	Kd 0.5882353 0.5882353 0.5882353
+	Ke 0 0 0
+	illum 2
+	Ks 0.8980392 0.8980392 0.8980392
+	Ns 0.1
+	d 1
+	Tr 0
+	map_Kd GOLDFISH.JPG
+newmtl 02 - Default
+	Ka 0.9254902 0.44313726 0.23137255
+	Kd 0.9254902 0.44313726 0.23137255
+	Ke 0 0 0
+	illum 2
+	Ks 1 1 1
+	Ns 0.1
+	d 1
+	Tr 0
+	map_Kd FISH_BOD.JPG
+	norm FISH_BUM.JPG
+newmtl cola
+	Ka 1 1 1
+	Kd 1 1 1
+	Ke 0 0 0
+	illum 2
+	Ks 0.9882353 0.7921569 0.53333336
+	Ns 0.12
+	d 1
+	Tr 0
+	map_Kd COLA.JPG
+	norm COLA_OPA.JPG
+newmtl aleta
+	Ka 1 1 1
+	Kd 1 1 1
+	Ke 0 0 0
+	illum 2
+	Ks 0.972549 0.56078434 0.02745098
+	Ns 0.12
+	d 1
+	Tr 0
+	map_Kd ALETA AR.JPG
+	norm ALETA AR.JPG
+newmtl 05 - Default
+	Ka 0.5882353 0.5882353 0.5882353
+	Kd 0.5882353 0.5882353 0.5882353
+	Ke 0 0 0
+	illum 2
+	Ks 0.8980392 0.8980392 0.8980392
+	Ns 0.12
+	d 1
+	Tr 0
+	map_Kd ALETA DO.JPG
+	norm ALETA DO.JPG
+newmtl 06 - Default
+	Ka 0 0 0
+	Kd 0 0 0
+	Ke 0 0 0
+	illum 2
+	Ks 0.8980392 0.8980392 0.8980392
+	Ns 0.69
+	d 1
+	Tr 0
