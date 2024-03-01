@@ -16,22 +16,11 @@ export class project extends Scene {
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
-            torus: new defs.Torus(15, 15),
-            torus2: new defs.Torus(3, 15),
-            sphere: new defs.Subdivision_Sphere(4),
-            circle: new defs.Regular_2D_Polygon(1, 15),
-            // TODO:  Fill in as many additional shape instances as needed in this key/value table.
-            //        (Requirement 1)
-            sun: new defs.Subdivision_Sphere(4),
-            planet1: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(2),
-            planet2: new defs.Subdivision_Sphere(3),
-            planet3: new defs.Subdivision_Sphere(4),
-            ring: new defs.Torus(50, 50),
-            planet4: new defs.Subdivision_Sphere(4),
-            moon: new (defs.Subdivision_Sphere.prototype.make_flat_shaded_version())(1),
             teapot: new Shape_From_File("assets/teapot.obj"),
-            apple: new Shape_From_File("assets/apple.obj")
-
+            apple: new Shape_From_File("assets/apple.obj"),
+            room: new Shape_From_File("assets/room.obj"),
+            aquarium: new Shape_From_File("assets/aquarium.obj"),
+            table: new Shape_From_File("assets/table.obj")
         };
 
         // *** Materials
@@ -39,27 +28,10 @@ export class project extends Scene {
             test: new Material(new defs.Phong_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             test2: new Material(new Gouraud_Shader(),
-                {ambient: .4, diffusivity: .6, color: hex_color("#992828")}),
-            ring: new Material(new Ring_Shader()),
-            // TODO:  Fill in as many additional material objects as needed in this key/value table.
-            //        (Requirement 4)
-            sun: new Material(new defs.Phong_Shader(),
-            {ambient: 1, diffusivity: 1, color: hex_color("#ffffff")}),
-            planet1: new Material(new defs.Phong_Shader(),
-            {ambient: 0, diffusivity: 1, color: hex_color("#9c9c9c"), specularity: 0}),
-            planet2_gouraud: new Material(new Gouraud_Shader(),
-                {ambient: 0, diffusivity: .2, color: hex_color("#80FFFF"), specularity: 1}),
-            planet2_phong: new Material(new defs.Phong_Shader(),
-                {ambient: 0, diffusivity: .2, color: hex_color("#80FFFF"), specularity: 1}),
-            planet3: new Material(new defs.Phong_Shader(),
-                {ambient: 0, diffusivity: 1, color: hex_color("#B08040"), specularity: 1}),
-            planet4: new Material(new defs.Phong_Shader(),
-                {ambient: 0, color: hex_color("#344ee3"), specularity: 1}), 
-            moon: new Material(new defs.Phong_Shader(),
-                {ambient: 0, diffusivity: .7, color: hex_color("#de0cfa"), specularity: 1}),  
-            }
+                {ambient: .4, diffusivity: .6, color: hex_color("#992828")})
+        }
 
-        this.initial_camera_location = Mat4.look_at(vec3(0, 10, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.initial_camera_location = Mat4.look_at(vec3(0, 5, 15), vec3(0, 0, 0), vec3(0, 1, 0));
     }
 
     make_control_panel() {
@@ -85,72 +57,20 @@ export class project extends Scene {
     
         const t = program_state.animation_time / 1000; // Get time in seconds
         let model_transform = Mat4.identity();
-    
-        // Sun transformation and drawing
-        let sun_radius = 2 + Math.sin(2 * Math.PI / 10 * t);
-        let sun_transform = model_transform.times(Mat4.scale(sun_radius, sun_radius, sun_radius));
-        let rgb_value = (1 + Math.sin(2 * Math.PI / 10 * t)) / 2; 
-        let sun_color = color(1, rgb_value, rgb_value, 1);
-        program_state.lights = [new Light(vec4(0, 0, 0, 1), sun_color, 10 ** sun_radius)];
-        //this.shapes.sun.draw(context, program_state, sun_transform, this.materials.sun.override({color: sun_color}));
-        this.shapes.apple.draw(context, program_state, sun_transform, this.materials.sun.override({color: sun_color}));
-    
-        // Planetary transformations and drawing
-        // Note: The original 'draw_planets' logic is now integrated here
-        let orbital_speed = t;
-    
-        // Planet 1
-        //Gray, 2 subdivisions, flat shaded, diffuse only
-        let planet1_transform = model_transform.times(Mat4.rotation(orbital_speed, 0, 1, 0)).times(Mat4.translation(5, 0, 0));
-        this.shapes.apple.draw(context, program_state, planet1_transform, this.materials.planet1);
-    
-        // Planet 2
-        //Swampy green-blue (suggest color #80FFFF ), 3 subdivisions, maximum specular, low diffuse. Apply Gouraud shading to it every odd second, but Phong shading every even second.
-        let planet2_transform = model_transform.times(Mat4.rotation(orbital_speed / 2, 0, 1, 0)).times(Mat4.translation(8, 0, 0));
-        if(Math.floor(t % 2) === 1) {
-            this.shapes.apple.draw(context, program_state, planet2_transform, this.materials.planet2_gouraud);
-        } else {
-            this.shapes.apple.draw(context, program_state, planet2_transform, this.materials.planet2_phong);
-        }
-    
-        // Planet 3
-        //Muddy brown-orange (suggest color #B08040 ), 4 subdivisions, maximum diffuse and specular. The planet could (optionally) wobble on in its rotation over time (have an axis not the same as the orbit axis). The planet must have a ring. You can use the provided torus shape, scaled flatter (reduced z axis scale). The ring and planet must wobble together - so base the ring's matrix directly on the planet's matrix. Give the ring the same color as the planet and set the material ambient only (for now).
-        let planet3_transform = model_transform.times(Mat4.rotation(orbital_speed / 3, 0, 1, 0)).times(Mat4.translation(11, 0, 0)).times(Mat4.rotation(Math.sin(t), 1, 0, 0));
-        this.shapes.apple.draw(context, program_state, planet3_transform, this.materials.planet3);
-        let ring_transform = planet3_transform.times(Mat4.scale(3.5, 3.5, 0.1));
-        this.shapes.ring.draw(context, program_state, ring_transform, this.materials.ring);
-    
-        // Planet 4
-        //Soft light blue, 4 subdivisions, smooth phong, high specular. Add a moon for this planet. The moon has 1 subdivision, with flat shading, any material, and a small orbital distance around the planet
-        let planet4_transform = model_transform.times(Mat4.rotation(orbital_speed / 5, 0, 1, 0)).times(Mat4.translation(14, 0, 0));
-        this.shapes.apple.draw(context, program_state, planet4_transform, this.materials.planet4);
-    
-        // Moon
-        //1 subdivision, with flat shading, any material, and a small orbital distance around the planet.
-        let moon_transform = planet4_transform.times(Mat4.rotation(t, 0, 1, 0)).times(Mat4.translation(-2, 0, 0));
-        this.shapes.apple.draw(context, program_state, moon_transform, this.materials.moon);
-    
-        // Camera attachment logic remains unchanged
-        if (this.attached !== undefined) {
-            program_state.camera_inverse = this.attached().map((x,i) => Vector.from(program_state.camera_inverse[i]).mix(x, 0.1));
-        }
 
-         // Planet model matrices for camera buttons (5 units away from each planet)
-         this.planet_1 = Mat4.inverse(planet1_transform.times(Mat4.translation(0, 0, 5)));
-         this.planet_2 = Mat4.inverse(planet2_transform.times(Mat4.translation(0, 0, 5)));
-         this.planet_3 = Mat4.inverse(planet3_transform.times(Mat4.translation(0, 0, 5)));
-         this.planet_4 = Mat4.inverse(planet4_transform.times(Mat4.translation(0, 0, 5)));
-         this.moon = Mat4.inverse(moon_transform.times(Mat4.translation(0, 0, 5)));
+        const light_position = vec4(0, 5, 5, 1);
+        program_state.lights = [new Light(light_position, color(1, 1, 1, 1), 1000)];
 
-         
+        let table_transform = model_transform.times(Mat4.scale(5, 5, 5))
+        this.shapes.table.draw(context, program_state, table_transform, this.materials.test);
+
+        let aquarium_transform = model_transform
+            .times(Mat4.scale(1.5, 1.5, 1.5))
+            //.times(Mat4.rotation(90,1,0,0))
+            .times(Mat4.translation(0,2,0))
+        this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.test);
+
     }
-    
-    getRandomInt(min, max) {
-        min = Math.ceil(min);
-        max = Math.floor(max);
-        return Math.floor(Math.random() * (max - min + 1)) + min; //The maximum is exclusive and the minimum is inclusive
-  }
-
 }
 
 class Gouraud_Shader extends Shader {
