@@ -88,11 +88,11 @@ export class project extends Scene {
         });
 */
 
-this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
-    texture: new Texture("assets/water1.jpeg"),
-    ambient: 0.2, diffusivity: 0.5, specularity: 0.5,
-    color: color(1, 1, 1, 1) // Use white color to ensure the texture's colors are used accurately
-  });
+        this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
+            texture: new Texture("assets/water1.jpeg"),
+            ambient: 0.2, diffusivity: 0.5, specularity: 0.5,
+            color: color(1, 1, 1, 1) // Use white color to ensure the texture's colors are used accurately
+        });
 
         
 
@@ -101,7 +101,7 @@ this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
     draw_with_mouse(context, program_state) {
 
 
-        let aquarium_bounds = { minX: -9, maxX: 9, minY: -9, maxY: 9, minZ: -9, maxZ: 9 };
+        let aquarium_bounds = { minX: -10, maxX: 10, minY: -5, maxY: 5, minZ: -10, maxZ: 10};
 
         let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
         let obj_scale = 0.25; // Fixed scale for simplicity
@@ -211,16 +211,36 @@ this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
     
             this.mouse_listener_added = true; // Set the flag to true
         }
+        const aquarium_bounds = {
+            minX: -5, maxX: 5,
+            minY: -5, maxY: 5,
+            minZ: -5, maxZ: 5
+        };
+    
         // Update and draw each fish
         this.object_queue.forEach(obj => {
-            // Update position
+            // Predict next position
+            const nextPos = obj.pos.plus(obj.direction.times(obj.speed * dt));
+    
+            // Check boundaries and reflect direction if hitting a wall
+            if (nextPos[0] < aquarium_bounds.minX || nextPos[0] > aquarium_bounds.maxX) {
+                obj.direction[0] *= -1;
+            }
+            if (nextPos[1] < aquarium_bounds.minY || nextPos[1] > aquarium_bounds.maxY) {
+                obj.direction[1] *= -1;
+            }
+            if (nextPos[2] < aquarium_bounds.minZ || nextPos[2] > aquarium_bounds.maxZ) {
+                obj.direction[2] *= -1;
+            }
+    
+            // Update position with possibly adjusted direction
             obj.pos = obj.pos.plus(obj.direction.times(obj.speed * dt));
-
+    
             // Prepare transformation matrix for the fish
             let transform = Mat4.translation(...obj.pos.to3())
                 .times(Mat4.rotation(obj.rotation, 0, 1, 0)) // Apply rotation
                 .times(Mat4.scale(obj.size, obj.size, obj.size)); // Apply scale
-
+    
             // Draw the fish
             this.shapes.nemo.draw(context, program_state, transform, this.materials.test);
         });
@@ -230,7 +250,7 @@ this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
 
        
         let aquarium_transform = Mat4.identity();
-        aquarium_transform = aquarium_transform.times(Mat4.translation(0, 2, 0)); // Adjust position
+        aquarium_transform = aquarium_transform.times(Mat4.translation(0, 0, 0)); // Adjust position
         aquarium_transform = aquarium_transform.times(Mat4.scale(10, 5, 10)); // Adjust size
         
         const gl = context.context || context; // Get the WebGL context
