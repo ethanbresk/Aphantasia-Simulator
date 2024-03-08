@@ -52,6 +52,8 @@ export class project extends Scene {
         // object queue
         this.object_queue = [ ];
 
+
+
         // mouse position
         this.mousex;
         this.mousey;
@@ -67,15 +69,47 @@ export class project extends Scene {
 
         this.initial_camera_location = Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
         //this.initial_camera_location = Mat4.translation(5, -10, -30);
+
+
+        this.materials.aquarium_glass = new Material(new defs.Phong_Shader(), 
+        { color: color(0.4, 0.5, 0.6, 0.1), // Adjust alpha for desired transparency
+            ambient: 0.2, diffusivity: 0.5, specularity: 0.5 });
+
+        this.materials.aquarium_outline = new Material(new Frame_Shader(), {
+            color: color(0, 0, 225, 225) // Black color for the outline
+        });
+            
+/*
+        this.materials.aquarium_glass = new Material(new defs.Phong_Shader(), {
+            color: color(0.4, 0.5, 0.6, 0.1), // Use a lower aslpha value for more transparency
+            ambient: 0.2, 
+            diffusivity: 0.5, 
+            specularity: 0.5
+        });
+*/
+
+this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
+    texture: new Texture("assets/water1.jpeg"),
+    ambient: 0.2, diffusivity: 0.5, specularity: 0.5,
+    color: color(1, 1, 1, 1) // Use white color to ensure the texture's colors are used accurately
+  });
+
+        
+
+
     }
     draw_with_mouse(context, program_state) {
+
+
+        let aquarium_bounds = { minX: -9, maxX: 9, minY: -9, maxY: 9, minZ: -9, maxZ: 9 };
+
         let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
         let obj_scale = 0.25; // Fixed scale for simplicity
     
         // Define movement attributes for the new fish
-        let direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized();
-        let speed = Math.random() * 0.05 + 0.01; // Random speed
-        let rotation = Math.random() * 2 * Math.PI; // Random rotation
+
+        
+     
     
         // Position calculation as before
         let z_coord = 0.97;
@@ -84,19 +118,29 @@ export class project extends Scene {
         let V = program_state.camera_inverse;
         let pos_world_far  = Mat4.inverse(P.times(V)).times(pos_ndc_far);
         pos_world_far.scale_by(1 / pos_world_far[3]);
+
+
+     
+        if (pos_world_far[0] >= aquarium_bounds.minX && pos_world_far[0] <= aquarium_bounds.maxX &&
+            pos_world_far[1] >= aquarium_bounds.minY && pos_world_far[1] <= aquarium_bounds.maxY &&
+            pos_world_far[2] >= aquarium_bounds.minZ && pos_world_far[2] <= aquarium_bounds.maxZ) {
+            // The click is inside the aquarium; spawn the fish
+            let direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized();
+            let speed = Math.random() * 0.1 + 0.02; // Adjusted speed for faster movement
+            let rotation = Math.random() * 2 * Math.PI;
     
-        // Create a new fish object with movement attributes
-        let obj = {
-            pos: pos_world_far,
-            color: obj_color,
-            size: obj_scale,
-            direction: direction,
-            speed: speed,
-            rotation: rotation
-        };
+            let obj = {
+                pos: pos_world_far, // Use the calculated world position
+                color: obj_color,
+                size: obj_scale,
+                direction: direction,
+                speed: speed,
+                rotation: rotation
+            };
+            
+            this.object_queue.push(obj);
+        }
     
-        // Add the new fish object to the queue
-        this.object_queue.push(obj);
     }
     
     
@@ -114,6 +158,9 @@ export class project extends Scene {
         // this.new_line();
         // this.key_triggered_button("Attach to moon", ["Control", "m"], () => this.attached = () => this.moon);
     }
+
+
+
     
     display(context, program_state) {
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
@@ -133,12 +180,9 @@ export class project extends Scene {
         let table_transform = model_transform
             .times(Mat4.scale(8, 8, 8))
             //.times(Mat4.rotation(90,0,1,0))
-        this.shapes.square.draw(context, program_state, table_transform, this.materials.water);
-        //context.gl.depthMask(false);
-        let aquarium_transform = model_transform
-            .times(Mat4.scale(5, 5, 5))
-            //.times(Mat4.rotation(90,1,0,0))
-            .times(Mat4.translation(0,2,0))
+       // this.shapes.square.draw(context, program_state, table_transform, this.materials.water);
+
+        
         //this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.aquarium);
         //context.gl.depthMask(true);
 
@@ -158,7 +202,7 @@ export class project extends Scene {
                 vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
                     (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
     
-            canvas.addEventListener("mousedown", e => {
+            canvas.addEventListener("contextmenu", e => {
                 e.preventDefault();
                 this.mousex = mouse_position(e)[0];
                 this.mousey = mouse_position(e)[1];
@@ -182,6 +226,38 @@ export class project extends Scene {
         });
 
 
+
+
+       
+        let aquarium_transform = Mat4.identity();
+        aquarium_transform = aquarium_transform.times(Mat4.translation(0, 2, 0)); // Adjust position
+        aquarium_transform = aquarium_transform.times(Mat4.scale(10, 5, 10)); // Adjust size
+        
+        const gl = context.context || context; // Get the WebGL context
+
+        // Enable blending
+        gl.enable(gl.BLEND);
+        // Set blending to interpolate towards a fixed alpha value
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+    
+        this.shapes.box.draw(context, program_state, aquarium_transform, this.materials.aquarium_glass);
+
+        // Optionally, disable blending if it's not needed for subsequent drawing operations
+        gl.disable(gl.BLEND);
+
+
+       
+
+       
+       
+       
+       
+       
+      
+    
+
+
         // draw with mouse
         // let canvas = context.canvas;
         // const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
@@ -203,6 +279,10 @@ export class project extends Scene {
 
     }
 }
+
+
+
+
 
 class Gouraud_Shader extends Shader {
     // This is a Shader using Phong_Shader as template
@@ -394,6 +474,51 @@ class Ring_Shader extends Shader {
         }`;
     }
 }
+
+
+
+class Frame_Shader extends Shader {
+    constructor() {
+        super();
+    }
+
+    shared_glsl_code() {
+        return `precision mediump float;`;
+    }
+
+    vertex_glsl_code() {
+        return `
+            attribute vec3 position;
+            uniform mat4 model_transform;
+            uniform mat4 projection_camera_model_transform;
+
+            void main() {
+                gl_Position = projection_camera_model_transform * vec4(position, 1.0);
+            }
+        `;
+    }
+
+    fragment_glsl_code() {
+        return `
+            uniform vec4 outline_color;
+
+            void main() {
+                gl_FragColor = outline_color; // Use the uniform color for the outline
+            }
+        `;
+    }
+
+    // Overriding the method that sends graphics state and material to the GPU:
+    update_GPU(context, gpu_addresses, program_state, model_transform, material) {
+        // Call parent class's update method
+        super.update_GPU(context, gpu_addresses, program_state, model_transform, material);
+        
+        // Set the outline color
+        const gl = context.context || context;
+        gl.uniform4fv(gpu_addresses.outline_color, material.color);
+    }
+}
+
 
 
 
