@@ -52,8 +52,6 @@ export class project extends Scene {
         // object queue
         this.object_queue = [ ];
 
-
-
         // mouse position
         this.mousex;
         this.mousey;
@@ -108,7 +106,6 @@ export class project extends Scene {
     
         // Define movement attributes for the new fish
 
-        
      
     
         // Position calculation as before
@@ -119,8 +116,6 @@ export class project extends Scene {
         let pos_world_far  = Mat4.inverse(P.times(V)).times(pos_ndc_far);
         pos_world_far.scale_by(1 / pos_world_far[3]);
 
-
-     
         if (pos_world_far[0] >= aquarium_bounds.minX && pos_world_far[0] <= aquarium_bounds.maxX &&
             pos_world_far[1] >= aquarium_bounds.minY && pos_world_far[1] <= aquarium_bounds.maxY &&
             pos_world_far[2] >= aquarium_bounds.minZ && pos_world_far[2] <= aquarium_bounds.maxZ) {
@@ -148,8 +143,8 @@ export class project extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
-        // this.key_triggered_button("View solar system", ["Control", "0"], () => this.attached = () => this.initial_camera_location);
-        // this.new_line();
+        this.key_triggered_button("Delete last fish", ["q"], () => this.delete_last_fish());
+        this.new_line();
         // this.key_triggered_button("Attach to planet 1", ["Control", "1"], () => this.attached = () => this.planet_1);
         // this.key_triggered_button("Attach to planet 2", ["Control", "2"], () => this.attached = () => this.planet_2);
         // this.new_line();
@@ -159,7 +154,12 @@ export class project extends Scene {
         // this.key_triggered_button("Attach to moon", ["Control", "m"], () => this.attached = () => this.moon);
     }
 
-
+    delete_last_fish() {
+        if (this.object_queue.length > 0) {
+            this.object_queue.pop();
+        }
+        console.log('test');
+    }
 
     
     display(context, program_state) {
