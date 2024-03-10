@@ -14,6 +14,8 @@ export class project extends Scene {
         // constructor(): Scenes begin by populating initial values like the Shapes and Materials they'll need.
         super();
 
+        this.top_view_camera = false; // Flag to track camera mode: false for movable, true for top view
+
         this.object_queue = [];
 
         this.mouse_listener_added = false;
@@ -77,14 +79,14 @@ export class project extends Scene {
             color: color(0, 0, 225, 225) // Black color for the outline
         });
             
-/*
-        this.materials.aquarium_glass = new Material(new defs.Phong_Shader(), {
+
+        this.materials.aquarium_glass_far = new Material(new defs.Phong_Shader(), {
             color: color(0.4, 0.5, 0.6, 0.1), // Use a lower aslpha value for more transparency
             ambient: 0.2, 
             diffusivity: 0.5, 
             specularity: 0.5
         });
-*/
+
 
         this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
             texture: new Texture("assets/water1.jpeg"),
@@ -145,6 +147,15 @@ export class project extends Scene {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("Delete last fish", ["q"], () => this.delete_last_fish());
         this.new_line();
+
+        this.key_triggered_button("Toggle Top View Camera", ["c"], () => {
+            this.top_view_camera = !this.top_view_camera; // Toggle the camera mode
+            if (this.top_view_camera) {
+                program_state.set_camera(Mat4.look_at(vec3(0, 30, 0.1), vec3(0, 0, 0), vec3(0, 0, -1))); // Top view camera
+            } else {
+                program_state.set_camera(this.initial_camera_location); // Reset to the initial camera location for a movable view
+            }
+        });
         // this.key_triggered_button("Attach to planet 1", ["Control", "1"], () => this.attached = () => this.planet_1);
         // this.key_triggered_button("Attach to planet 2", ["Control", "2"], () => this.attached = () => this.planet_2);
         // this.new_line();
@@ -168,6 +179,20 @@ export class project extends Scene {
             this.children.push(context.scratchpad.controls = new defs.Movement_Controls());
             program_state.set_camera(this.initial_camera_location);
         }
+
+        if (this.top_view_camera) {
+            let top_view_camera_position = vec3(-1, 30, 17);
+            let looking_at_point = vec3(0, 1, 0);
+            let up_direction = vec3(0, 0, -1);
+            program_state.set_camera(Mat4.look_at(top_view_camera_position, looking_at_point, up_direction));
+        } else {
+            program_state.set_camera(this.initial_camera_location);
+        }
+    
+        // Decide which material to use based on the top_view_camera flag
+        let aquarium_material = this.top_view_camera ? this.materials.aquarium_glass_far : this.materials.aquarium_glass;
+
+    
 
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, .1, 1000);
     
@@ -261,7 +286,7 @@ export class project extends Scene {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
     
-        this.shapes.box.draw(context, program_state, aquarium_transform, this.materials.aquarium_glass);
+        this.shapes.box.draw(context, program_state, aquarium_transform, aquarium_material);
 
         // Optionally, disable blending if it's not needed for subsequent drawing operations
         gl.disable(gl.BLEND);
