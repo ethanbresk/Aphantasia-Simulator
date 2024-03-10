@@ -25,7 +25,7 @@ export class project extends Scene {
             // basic shapes
             box: new defs.Cube(),
             sphere: new defs.Subdivision_Sphere(4),
-            circle: new defs.Regular_2D_Polygon(50,50),
+            circle: new defs.Regular_2D_Polygon(50, 50),
             square: new defs.Square(),
 
             // room assets
@@ -46,13 +46,18 @@ export class project extends Scene {
                 {ambient: .4, diffusivity: .6, color: hex_color("#FFFF00")}),
             test2: new Material(new Gouraud_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#992828")}),
-            water: new Material(textured, {ambient: .5, texture: new Texture("assets/water1.jpeg")}),
+            water: new Material(textured, {ambient: .5, diffusivity: 1, specularity: 1, texture: new Texture("assets/water1.png")}),
             aquarium: new Material(new defs.Phong_Shader(),
-                {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)})
+                {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)}),
+            // menu
+            //menu: new Material(textured,
+                //{ambient: 0.9, diffusivity: .9, texture: new Texture("assets/wood2.jpg")}),
+            //menubuttons: new Material(textured,
+                //{ambient: 0.9, diffusivity: 1, specularity: 1,  texture: new Texture("assets/bubble3.png")}),
         }
 
         // object queue
-        this.object_queue = [ ];
+        this.object_queue = [];
 
         // mouse position
         this.mousex;
@@ -61,8 +66,8 @@ export class project extends Scene {
         this.num_fish = 10; // Number of fish
         this.num_fish = 10; // Number of fish
         this.fish_states = Array.from({length: this.num_fish}, () => ({
-            position: vec3(Math.random()*10-5, Math.random()*5, Math.random()*10-5), // Random position
-            direction: vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized(), // Random direction
+            position: vec3(Math.random() * 10 - 5, Math.random() * 5, Math.random() * 10 - 5), // Random position
+            direction: vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(), // Random direction
             speed: Math.random() * 0.05 + 0.01, // Random speed
             rotation: Math.random() * 2 * Math.PI // Random rotation around y-axis
         }));
@@ -71,19 +76,21 @@ export class project extends Scene {
         //this.initial_camera_location = Mat4.translation(5, -10, -30);
 
 
-        this.materials.aquarium_glass = new Material(new defs.Phong_Shader(), 
-        { color: color(0.4, 0.5, 0.6, 0.1), // Adjust alpha for desired transparency
-            ambient: 0.2, diffusivity: 0.5, specularity: 0.5 });
+        this.materials.aquarium_glass = new Material(new defs.Phong_Shader(),
+            {
+                color: color(0.4, 0.5, 0.6, 0.1), // Adjust alpha for desired transparency
+                ambient: 0.2, diffusivity: 0.5, specularity: 0.5
+            });
 
         this.materials.aquarium_outline = new Material(new Frame_Shader(), {
             color: color(0, 0, 225, 225) // Black color for the outline
         });
-            
+
 
         this.materials.aquarium_glass_far = new Material(new defs.Phong_Shader(), {
             color: color(0.4, 0.5, 0.6, 0.1), // Use a lower aslpha value for more transparency
-            ambient: 0.2, 
-            diffusivity: 0.5, 
+            ambient: 0.2,
+            diffusivity: 0.5,
             specularity: 0.5
         });
 
@@ -94,28 +101,26 @@ export class project extends Scene {
             color: color(1, 1, 1, 1) // Use white color to ensure the texture's colors are used accurately
         });
 
-        
-
 
     }
+
     draw_with_mouse(context, program_state) {
 
 
-        let aquarium_bounds = { minX: -10, maxX: 10, minY: -5, maxY: 5, minZ: -10, maxZ: 10};
+        let aquarium_bounds = {minX: -10, maxX: 10, minY: -5, maxY: 5, minZ: -10, maxZ: 10};
 
         let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
         let obj_scale = 0.25; // Fixed scale for simplicity
-    
+
         // Define movement attributes for the new fish
 
-     
-    
+
         // Position calculation as before
         let z_coord = Math.random() * (0.99 - 0.94) + 0.94;
-        let pos_ndc_far  = vec4(this.mousex, this.mousey, z_coord, 1.0);
+        let pos_ndc_far = vec4(this.mousex, this.mousey, z_coord, 1.0);
         let P = program_state.projection_transform;
         let V = program_state.camera_inverse;
-        let pos_world_far  = Mat4.inverse(P.times(V)).times(pos_ndc_far);
+        let pos_world_far = Mat4.inverse(P.times(V)).times(pos_ndc_far);
         pos_world_far.scale_by(1 / pos_world_far[3]);
 
         if (pos_world_far[0] >= aquarium_bounds.minX && pos_world_far[0] <= aquarium_bounds.maxX &&
@@ -123,10 +128,10 @@ export class project extends Scene {
             pos_world_far[2] >= aquarium_bounds.minZ && pos_world_far[2] <= aquarium_bounds.maxZ) {
             // The click is inside the aquarium; spawn the fish
 
-            let direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized(); //Math.random()*2-1
+            let direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(); //Math.random()*2-1
             let speed = Math.random() * (0.5 - 0.05) + 0.05; // Adjusted speed for faster movement
             let rotation = Math.random() * 2 * Math.PI;
-    
+
             let obj = {
                 pos: pos_world_far, // Use the calculated world position
                 color: obj_color,
@@ -135,14 +140,12 @@ export class project extends Scene {
                 speed: speed,
                 rotation: rotation
             };
-            
+
             this.object_queue.push(obj);
         }
-    
+
     }
-    
-    
-    
+
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -172,7 +175,6 @@ export class project extends Scene {
         }
     }
 
-    
     display(context, program_state) {
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
@@ -188,14 +190,13 @@ export class project extends Scene {
         } else {
             program_state.set_camera(this.initial_camera_location);
         }
-    
+
         // Decide which material to use based on the top_view_camera flag
         let aquarium_material = this.top_view_camera ? this.materials.aquarium_glass_far : this.materials.aquarium_glass;
 
-    
 
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, .1, 1000);
-    
+
         const t = program_state.animation_time / 1000; // Get time in seconds
         let model_transform = Mat4.identity();
 
@@ -204,10 +205,10 @@ export class project extends Scene {
 
         let table_transform = model_transform
             .times(Mat4.scale(8, 8, 8))
-            //.times(Mat4.rotation(90,0,1,0))
-       // this.shapes.square.draw(context, program_state, table_transform, this.materials.water);
+        //.times(Mat4.rotation(90,0,1,0))
+        // this.shapes.square.draw(context, program_state, table_transform, this.materials.water);
 
-        
+
         //this.shapes.aquarium.draw(context, program_state, aquarium_transform, this.materials.aquarium);
         //context.gl.depthMask(true);
 
@@ -216,7 +217,7 @@ export class project extends Scene {
             .times(Mat4.scale(5, 5, 5)) // Apply the same scale as the aquarium to ensure consistent positioning
             .times(Mat4.translation(2, 2.5, 1)) // Move nemo inside the aquarium. Adjust these values as needed.
             .times(Mat4.scale(0.1, 0.1, 0.1)); // Scale down nemo if necessary
-   
+
         //this.shapes.nemo.draw(context, program_state, nemo_transform, this.materials.test);
 
         const dt = program_state.animation_delta_time / 1000; // Delta time in seconds
@@ -226,14 +227,14 @@ export class project extends Scene {
             const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
                 vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
                     (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
-    
+
             canvas.addEventListener("contextmenu", e => {
                 e.preventDefault();
                 this.mousex = mouse_position(e)[0];
                 this.mousey = mouse_position(e)[1];
                 this.draw_with_mouse(context, program_state);
             });
-    
+
             this.mouse_listener_added = true; // Set the flag to true
         }
         const aquarium_bounds = {
@@ -241,47 +242,37 @@ export class project extends Scene {
             minY: -5, maxY: 5,
             minZ: -10, maxZ: 10
         };
-    
+
         // Update and draw each fish
         this.object_queue.forEach(obj => {
-            // Predict next position
-            //const nextPos = obj.pos.plus(obj.direction.times(obj.speed * dt));
-            console.log(obj.pos[2])
             // Check boundaries and reflect direction if hitting a wall
             if (obj.pos[0] < aquarium_bounds.minX || obj.pos[0] > aquarium_bounds.maxX) {
                 obj.direction[0] *= -1;
-
             }
             if (obj.pos[1] < aquarium_bounds.minY || obj.pos[1] > aquarium_bounds.maxY) {
                 obj.direction[1] *= -1;
-                console.log("y")
             }
             if (obj.pos[2] < aquarium_bounds.minZ || obj.pos[2] > aquarium_bounds.maxZ) {
                 obj.direction[2] *= -1;
-                //console.log("z:" + obj.pos[2])
-                //console.log("z")
             }
-    
+
             // Update position with possibly adjusted direction
             obj.pos = obj.pos.plus(obj.direction.times(obj.speed * dt));
-    
+
             // Prepare transformation matrix for the fish
             let transform = Mat4.translation(...obj.pos.to3())
                 .times(Mat4.rotation(obj.rotation, 0, 1, 0)) // Apply rotation
                 .times(Mat4.scale(obj.size, obj.size, obj.size)); // Apply scale
-    
+
             // Draw the fish
             this.shapes.nemo.draw(context, program_state, transform, this.materials.test);
         });
 
 
-
-
-       
         let aquarium_transform = Mat4.identity();
         aquarium_transform = aquarium_transform.times(Mat4.translation(0, 0, 0)); // Adjust position
         aquarium_transform = aquarium_transform.times(Mat4.scale(10, 5, 10)); // Adjust size
-        
+
         const gl = context.context || context; // Get the WebGL context
 
         // Enable blending
@@ -289,47 +280,40 @@ export class project extends Scene {
         // Set blending to interpolate towards a fixed alpha value
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
 
-    
+
         this.shapes.box.draw(context, program_state, aquarium_transform, aquarium_material);
 
         // Optionally, disable blending if it's not needed for subsequent drawing operations
         gl.disable(gl.BLEND);
 
-
-       
-
-       
-       
-       
-       
-       
-      
-    
-
-
-        // draw with mouse
-        // let canvas = context.canvas;
-        // const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
-        //     vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
-        //         (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
-
-        // // when user clicks --> draw object at mouse position (if they can afford it)
-        // canvas.addEventListener("mousedown", e => {
-        //     e.preventDefault();
-        //     const rect = canvas.getBoundingClientRect()
-        //     this.mousex = mouse_position(e)[0];
-        //     this.mousey = mouse_position(e)[1];
-        //     //this.click_sound.play();
-        //     this.draw_with_mouse(context, program_state);
-        // });
-
-     
-
-
+        this.draw_menu(context, program_state, model_transform);
+    }
+    draw_menu(context, program_state, model_transform) {
+        // // draw menu platform at top of viewport (wood texture)
+        // let menubar_trans = model_transform.times(Mat4.translation(-26.4, 21, 0, 0))
+        //     .times(Mat4.scale(50, 2, 0, 0))
+        // this.shapes.square.draw(context, program_state, menubar_trans, this.materials.menu);
+        //
+        // // draw item 1: floral coral
+        // var item1_background_trans = model_transform.times(Mat4.translation(-23.5, 20.8, 0, 0))
+        //     .times(Mat4.scale(1.4, 1.4, .5, 0));
+        //
+        // let item1_trans = item1_background_trans.times(Mat4.translation(0.5, -0.25, 2, 0))
+        //     .times(Mat4.scale(0.38, 0.38, 1, 0))
+        //     .times(Mat4.rotation(-43.7, 0, 0, 1));
+        // this.shapes.coral1.draw(context, program_state, item1_trans, this.materials.coral.override({color: hex_color("#e691bc")}));
+        //
+        // let item1_price_trans = model_transform.times(Mat4.translation(-26.1, 20.3, 1, 0))
+        //     .times(Mat4.scale(0.75, 0.75, 1, 0))
+        // var price1 = 2;
+        // this.shapes.text.set_string("$" + price1.toString(), context.context);
+        // this.shapes.text.draw(context, program_state, item1_price_trans, this.materials.text_image);
+        //
+        // // get position of item 1 button
+        // let button1x = ((item1_background_trans[0][3]) - (-5)) / 22.5;
+        // let button1y = (item1_background_trans[1][3] - (10.5)) / 12;
     }
 }
-
-
 
 
 
