@@ -111,7 +111,7 @@ export class project extends Scene {
      
     
         // Position calculation as before
-        let z_coord = 0.97;
+        let z_coord = Math.random() * (0.99 - 0.94) + 0.94;
         let pos_ndc_far  = vec4(this.mousex, this.mousey, z_coord, 1.0);
         let P = program_state.projection_transform;
         let V = program_state.camera_inverse;
@@ -122,8 +122,9 @@ export class project extends Scene {
             pos_world_far[1] >= aquarium_bounds.minY && pos_world_far[1] <= aquarium_bounds.maxY &&
             pos_world_far[2] >= aquarium_bounds.minZ && pos_world_far[2] <= aquarium_bounds.maxZ) {
             // The click is inside the aquarium; spawn the fish
-            let direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized();
-            let speed = Math.random() * 0.1 + 0.02; // Adjusted speed for faster movement
+
+            let direction = vec3(Math.random()*2-1, Math.random()*2-1, Math.random()*2-1).normalized(); //Math.random()*2-1
+            let speed = Math.random() * (0.5 - 0.05) + 0.05; // Adjusted speed for faster movement
             let rotation = Math.random() * 2 * Math.PI;
     
             let obj = {
@@ -148,7 +149,7 @@ export class project extends Scene {
         this.key_triggered_button("Delete last fish", ["q"], () => this.delete_last_fish());
         this.new_line();
 
-        this.key_triggered_button("Toggle Top View Camera", ["c"], () => {
+        this.key_triggered_button("Toggle top view camera", ["c"], () => {
             this.top_view_camera = !this.top_view_camera; // Toggle the camera mode
             if (this.top_view_camera) {
                 program_state.set_camera(Mat4.look_at(vec3(0, 30, 0.1), vec3(0, 0, 0), vec3(0, 0, -1))); // Top view camera
@@ -169,7 +170,6 @@ export class project extends Scene {
         if (this.object_queue.length > 0) {
             this.object_queue.pop();
         }
-        console.log('test');
     }
 
     
@@ -181,7 +181,7 @@ export class project extends Scene {
         }
 
         if (this.top_view_camera) {
-            let top_view_camera_position = vec3(-1, 30, 17);
+            let top_view_camera_position = vec3(0, 30, 17);
             let looking_at_point = vec3(0, 1, 0);
             let up_direction = vec3(0, 0, -1);
             program_state.set_camera(Mat4.look_at(top_view_camera_position, looking_at_point, up_direction));
@@ -237,25 +237,29 @@ export class project extends Scene {
             this.mouse_listener_added = true; // Set the flag to true
         }
         const aquarium_bounds = {
-            minX: -5, maxX: 5,
+            minX: -10, maxX: 10,
             minY: -5, maxY: 5,
-            minZ: -5, maxZ: 5
+            minZ: -10, maxZ: 10
         };
     
         // Update and draw each fish
         this.object_queue.forEach(obj => {
             // Predict next position
-            const nextPos = obj.pos.plus(obj.direction.times(obj.speed * dt));
-    
+            //const nextPos = obj.pos.plus(obj.direction.times(obj.speed * dt));
+            console.log(obj.pos[2])
             // Check boundaries and reflect direction if hitting a wall
-            if (nextPos[0] < aquarium_bounds.minX || nextPos[0] > aquarium_bounds.maxX) {
+            if (obj.pos[0] < aquarium_bounds.minX || obj.pos[0] > aquarium_bounds.maxX) {
                 obj.direction[0] *= -1;
+
             }
-            if (nextPos[1] < aquarium_bounds.minY || nextPos[1] > aquarium_bounds.maxY) {
+            if (obj.pos[1] < aquarium_bounds.minY || obj.pos[1] > aquarium_bounds.maxY) {
                 obj.direction[1] *= -1;
+                console.log("y")
             }
-            if (nextPos[2] < aquarium_bounds.minZ || nextPos[2] > aquarium_bounds.maxZ) {
+            if (obj.pos[2] < aquarium_bounds.minZ || obj.pos[2] > aquarium_bounds.maxZ) {
                 obj.direction[2] *= -1;
+                //console.log("z:" + obj.pos[2])
+                //console.log("z")
             }
     
             // Update position with possibly adjusted direction
