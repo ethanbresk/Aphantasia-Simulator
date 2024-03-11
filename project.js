@@ -21,6 +21,7 @@ export class project extends Scene {
 
         this.mouse_listener_added = false;
 
+
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
             // basic shapes
@@ -134,6 +135,7 @@ export class project extends Scene {
         let V = program_state.camera_inverse;
         let pos_world_far = Mat4.inverse(P.times(V)).times(pos_ndc_far);
         pos_world_far.scale_by(1 / pos_world_far[3]);
+        const currentTime = program_state.animation_time; 
 
         if (pos_world_far[0] >= aquarium_bounds.minX && pos_world_far[0] <= aquarium_bounds.maxX &&
             pos_world_far[1] >= aquarium_bounds.minY && pos_world_far[1] <= aquarium_bounds.maxY &&
@@ -151,8 +153,13 @@ export class project extends Scene {
                 direction: direction,
                 speed: speed,
                 rotation: rotation,
-                type: this.fish_to_draw
+                type: this.fish_to_draw,
+                lastDuplicationTime: -Infinity,
             };
+
+            if (this.fish_to_draw === "turtle") {
+                obj.creationTime = currentTime;
+            }
 
             this.object_queue.push(obj);
         }
@@ -180,6 +187,17 @@ export class project extends Scene {
                 program_state.set_camera(this.initial_camera_location); // Reset to the initial camera location for a movable view
             }
         });
+        // Lifespan adjustment buttons
+        this.control_panel.appendChild(document.createTextNode("Turtle Lifespan (seconds): "));
+        this.key_triggered_button("-5s", ["-"], () => {
+            this.turtleLifespan = Math.max(5000, this.turtleLifespan - 5000); // Minimum of 5 seconds
+            console.log(`Turtle Lifespan: ${this.turtleLifespan / 1000} seconds`);
+        });
+        this.key_triggered_button("+5s", ["+"], () => {
+            this.turtleLifespan += 5000; // Increase lifespan by 5 seconds
+            console.log(`Turtle Lifespan: ${this.turtleLifespan / 1000} seconds`);
+        });
+
     }
 
     delete_last_fish() {
@@ -194,6 +212,78 @@ export class project extends Scene {
     set_fish_turtle() {
         this.fish_to_draw = "turtle";
     }
+
+
+    update_fish(context, program_state) {
+        const collision_threshold = 0.8; // Adjust based on your scene scale
+        let new_fish = []; // Temporarily hold new fish to add after checking all collisions
+        const fishCooldownPeriod = 2000; // Cooldown period for fish in milliseconds
+        const currentTime = program_state.animation_time; // Current time in milliseconds
+        const turtleLifetime = 10000;
+        
+    
+        // Filter out turtles that have exceeded their lifetime
+        this.object_queue = this.object_queue.filter(obj => {
+            if (obj.type === "turtle" && currentTime - obj.creationTime > turtleLifetime) {
+                return false; // Remove expired turtles
+            }
+            return true;
+        });
+    
+        // Initialize an array to hold fish that will be removed due to collisions with turtles
+        let fishToRemove = [];
+    
+        for (let i = 0; i < this.object_queue.length; i++) {
+            const obj = this.object_queue[i];
+            if (currentTime - obj.lastDuplicationTime < fishCooldownPeriod) {
+                continue; // Skip if still in cooldown
+            }
+    
+            for (let j = i + 1; j < this.object_queue.length; j++) {
+                const fish1 = this.object_queue[i];
+                const fish2 = this.object_queue[j];
+                const distance = fish1.pos.minus(fish2.pos).norm();
+    
+                if (distance < collision_threshold && currentTime - fish2.lastDuplicationTime >= fishCooldownPeriod) {
+                    // If a turtle collides with a fish, mark the fish for removal
+                    if (fish1.type === "turtle" && fish2.type !== "turtle") {
+                        fishToRemove.push(j); // Mark fish2 for removal
+                    } else if (fish2.type === "turtle" && fish1.type !== "turtle") {
+                        fishToRemove.push(i); // Mark fish1 for removal
+                    } else {
+                        // Handle duplication logic here (similar to previous implementation)
+                        let newObject = {
+                            ...fish1,
+                            pos: fish1.pos.plus(vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)),
+                            direction: vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(),
+                            lastDuplicationTime: currentTime,
+                        };
+    
+                        if (fish1.type === "turtle") {
+                            newObject.creationTime = currentTime; // For new turtles
+                        }
+    
+                        new_fish.push(newObject);
+                        fish1.lastDuplicationTime = currentTime;
+                        fish2.lastDuplicationTime = currentTime;
+                    }
+                }
+            }
+        }
+    
+        // Remove fish that collided with turtles
+        fishToRemove = [...new Set(fishToRemove)]; // Remove duplicates
+        fishToRemove.sort((a, b) => b - a); // Sort in descending order for safe removal
+        for (let index of fishToRemove) {
+            this.object_queue.splice(index, 1); // Remove fish at index
+        }
+    
+        // Add new fish (or turtles) to the object queue
+        this.object_queue = [...this.object_queue, ...new_fish];
+    }
+    
+    
+    
 
     display(context, program_state) {
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
@@ -285,9 +375,17 @@ export class project extends Scene {
                 .times(Mat4.scale(obj.size, obj.size, obj.size)); // Apply scale
 
             // Draw the fish
-            if (obj.type === "nemo") this.shapes.nemo.draw(context, program_state, transform, this.materials.test)
-            else if (obj.type === "turtle") this.shapes.turtle.draw(context, program_state, transform, this.materials.turtle)
+            if (obj.type === "nemo") {
+                this.shapes.nemo.draw(context, program_state, transform, this.materials.test)
+            } else if (obj.type === "turtle") {
+                transform = transform.times(Mat4.rotation(Math.PI / 1,0, Math.PI / 2, 1));
+
+                this.shapes.turtle.draw(context, program_state, transform, this.materials.turtle)
+            }
         });
+
+        this.update_fish(context, program_state);
+
 
         const gl = context.context || context; // Get the WebGL context
         
@@ -350,7 +448,6 @@ export class project extends Scene {
 
         
     
-
 
 
         
