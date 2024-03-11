@@ -17,6 +17,7 @@ export class project extends Scene {
         this.top_view_camera = false; // Flag to track camera mode: false for movable, true for top view
 
         this.object_queue = [];
+        this.fish_to_draw = "nemo";
 
         this.mouse_listener_added = false;
 
@@ -34,7 +35,8 @@ export class project extends Scene {
 
             // fish
             goldFish: new Shape_From_File("assets/goldfish.obj"),
-            nemo: new Shape_From_File("assets/nemo.obj")
+            nemo: new Shape_From_File("assets/nemo.obj"),
+            turtle: new Shape_From_File("assets/turtle.obj")
         };
 
         // textured phong
@@ -46,12 +48,14 @@ export class project extends Scene {
                 {ambient: .4, diffusivity: .6, color: hex_color("#FFFF00")}),
             test2: new Material(new Gouraud_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#992828")}),
-            water: new Material(textured, {ambient: .5, diffusivity: 1, specularity: 1, texture: new Texture("assets/water1.png")}),
+            water: new Material(textured, {ambient: .5, diffusivity: 1, specularity: 1, texture: new Texture("assets/water1.jpeg")}),
             aquarium: new Material(new defs.Phong_Shader(),
                 {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)}),
             // menu
-            //menu: new Material(textured,
-                //{ambient: 0.9, diffusivity: .9, texture: new Texture("assets/wood2.jpg")}),
+            menu: new Material(textured,
+                {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#FFFFFF")}),
+            menu_selected: new Material(textured,
+                {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#1303fc")}),
             //menubuttons: new Material(textured,
                 //{ambient: 0.9, diffusivity: 1, specularity: 1,  texture: new Texture("assets/bubble3.png")}),
         }
@@ -96,7 +100,7 @@ export class project extends Scene {
 
 
         this.materials.aquarium_glass = new Material(new defs.Textured_Phong(1), {
-            texture: new Texture("assets/water1.jpeg"),
+            texture: new Texture("assets/water1.png"),
             ambient: 0.2, diffusivity: 0.5, specularity: 0.5,
             color: color(1, 1, 1, 1) // Use white color to ensure the texture's colors are used accurately
         });
@@ -138,7 +142,8 @@ export class project extends Scene {
                 size: obj_scale,
                 direction: direction,
                 speed: speed,
-                rotation: rotation
+                rotation: rotation,
+                type: this.fish_to_draw
             };
 
             this.object_queue.push(obj);
@@ -149,9 +154,16 @@ export class project extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
+
+        this.control_panel.innerHTML += "Select type of fish to spawn:<br>";
+        this.key_triggered_button("Select: Nemo", ["1"], () => this.set_fish_nemo());
+        this.key_triggered_button("Select: Turtle", ["2"], () => this.set_fish_turtle());
+        this.new_line();
+        this.new_line();
+        this.live_string(box => box.textContent = "Functionality controls:");
+        this.new_line();
         this.key_triggered_button("Delete last fish", ["q"], () => this.delete_last_fish());
         this.new_line();
-
         this.key_triggered_button("Toggle top view camera", ["c"], () => {
             this.top_view_camera = !this.top_view_camera; // Toggle the camera mode
             if (this.top_view_camera) {
@@ -175,6 +187,13 @@ export class project extends Scene {
         }
     }
 
+    set_fish_nemo() {
+        this.fish_to_draw = "nemo";
+    }
+    set_fish_turtle() {
+        this.fish_to_draw = "turtle";
+    }
+
     display(context, program_state) {
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
@@ -192,7 +211,7 @@ export class project extends Scene {
         }
 
         // Decide which material to use based on the top_view_camera flag
-        let aquarium_material = this.top_view_camera ? this.materials.aquarium_glass_far : this.materials.aquarium_glass;
+        let aquarium_material = this.top_view_camera ? this.materials.aquarium_glass : this.materials.aquarium_glass;
 
 
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, .1, 1000);
@@ -238,9 +257,9 @@ export class project extends Scene {
             this.mouse_listener_added = true; // Set the flag to true
         }
         const aquarium_bounds = {
-            minX: -10, maxX: 10,
-            minY: -5, maxY: 5,
-            minZ: -10, maxZ: 10
+            minX: -9.8, maxX: 9.8,
+            minY: -4.8, maxY: 4.8,
+            minZ: -9.8, maxZ: 9.8
         };
 
         // Update and draw each fish
@@ -265,7 +284,8 @@ export class project extends Scene {
                 .times(Mat4.scale(obj.size, obj.size, obj.size)); // Apply scale
 
             // Draw the fish
-            this.shapes.nemo.draw(context, program_state, transform, this.materials.test);
+            if (obj.type === "nemo") this.shapes.nemo.draw(context, program_state, transform, this.materials.test)
+            else if (obj.type === "turtle") this.shapes.turtle.draw(context, program_state, transform, this.materials.test)
         });
 
 
@@ -286,32 +306,36 @@ export class project extends Scene {
         // Optionally, disable blending if it's not needed for subsequent drawing operations
         gl.disable(gl.BLEND);
 
-        this.draw_menu(context, program_state, model_transform);
+        //this.draw_menu(context, program_state, model_transform);
     }
     draw_menu(context, program_state, model_transform) {
-        // // draw menu platform at top of viewport (wood texture)
-        // let menubar_trans = model_transform.times(Mat4.translation(-26.4, 21, 0, 0))
-        //     .times(Mat4.scale(50, 2, 0, 0))
-        // this.shapes.square.draw(context, program_state, menubar_trans, this.materials.menu);
-        //
-        // // draw item 1: floral coral
-        // var item1_background_trans = model_transform.times(Mat4.translation(-23.5, 20.8, 0, 0))
-        //     .times(Mat4.scale(1.4, 1.4, .5, 0));
-        //
-        // let item1_trans = item1_background_trans.times(Mat4.translation(0.5, -0.25, 2, 0))
-        //     .times(Mat4.scale(0.38, 0.38, 1, 0))
-        //     .times(Mat4.rotation(-43.7, 0, 0, 1));
-        // this.shapes.coral1.draw(context, program_state, item1_trans, this.materials.coral.override({color: hex_color("#e691bc")}));
-        //
-        // let item1_price_trans = model_transform.times(Mat4.translation(-26.1, 20.3, 1, 0))
-        //     .times(Mat4.scale(0.75, 0.75, 1, 0))
-        // var price1 = 2;
-        // this.shapes.text.set_string("$" + price1.toString(), context.context);
-        // this.shapes.text.draw(context, program_state, item1_price_trans, this.materials.text_image);
-        //
-        // // get position of item 1 button
-        // let button1x = ((item1_background_trans[0][3]) - (-5)) / 22.5;
-        // let button1y = (item1_background_trans[1][3] - (10.5)) / 12;
+
+        // draw item 1: floral coral
+        var item1_circle_trans = model_transform.times(Mat4.translation(-6, 3, 0, 0))
+            .times(Mat4.scale(0.6, 0.6, 0.5, 0));
+
+        // get position of item 1 button
+        let button1x = ((item1_circle_trans[0][3]) - (-5)) / 22.5;
+        let button1y = (item1_circle_trans[1][3] - (10.5)) / 12;
+
+        // check if mouse click on item 1 button
+        if ((this.mousex < button1x + 0.1 && this.mousex > button1x - 0.1) && (this.mousey < button1y + 0.12 && this.mousey > button1y - 0.1) && (this.sand_dollars - price1 >= 0))
+        {
+            // if clicked --> animate item so that we know it is clicked
+            this.shapes.circle.draw(context, program_state, item1_circle_trans, this.materials.menu_selected);
+
+            // draw item on next mouse click
+            this.fish_to_draw = "nemo";
+        }
+        else {
+            this.shapes.circle.draw(context, program_state, item1_circle_trans, this.materials.menu_selected);
+        }
+
+        let item1_trans = item1_circle_trans.times(Mat4.translation(0.2, -0.1, 0.3, 0))
+            .times(Mat4.scale(0.35, 0.35, 1, 0))
+            .times(Mat4.rotation(-43.9, 0, 0, 1));
+        this.shapes.nemo.draw(context, program_state, item1_trans, this.materials.test);
+
     }
 }
 
