@@ -56,6 +56,7 @@ export class project extends Scene {
                 {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#FFFFFF")}),
             menu_selected: new Material(textured,
                 {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#1303fc")}),
+            turtle: new Material(textured, {ambient: .5, diffusivity: 1, specularity: 1, texture: new Texture("assets/turtle_texture.jpg")}),
             //menubuttons: new Material(textured,
                 //{ambient: 0.9, diffusivity: 1, specularity: 1,  texture: new Texture("assets/bubble3.png")}),
         }
@@ -285,7 +286,7 @@ export class project extends Scene {
 
             // Draw the fish
             if (obj.type === "nemo") this.shapes.nemo.draw(context, program_state, transform, this.materials.test)
-            else if (obj.type === "turtle") this.shapes.turtle.draw(context, program_state, transform, this.materials.test)
+            else if (obj.type === "turtle") this.shapes.turtle.draw(context, program_state, transform, this.materials.turtle)
         });
 
         const gl = context.context || context; // Get the WebGL context
