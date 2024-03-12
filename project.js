@@ -18,7 +18,7 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 2;
+        this.points = 4;
         this.mouse_listener_added = false;
         this.coin_counter = 360;
 
@@ -221,6 +221,10 @@ export class project extends Scene {
                 program_state.set_camera(this.initial_camera_location); // Reset to the initial camera location for a movable view
             }
         });
+        this.key_triggered_button("Show/Hide Points", ["l"], () => {
+            this.show_points_flag = !this.show_points_flag;
+        });
+
         // Lifespan adjustment buttons
         // this.control_panel.appendChild(document.createTextNode("Turtle Lifespan (seconds): "));
         // this.key_triggered_button("-5s", ["-"], () => {
@@ -257,83 +261,181 @@ export class project extends Scene {
         this.fish_to_draw = "shark";
     }
 
-
     update_fish(context, program_state) {
         const collision_threshold = 0.8; // Adjust based on your scene scale
-        let new_fish = []; // Temporarily hold new fish to add after checking all collisions
         const fishCooldownPeriod = 2000; // Cooldown period for fish in milliseconds
         const currentTime = program_state.animation_time; // Current time in milliseconds
-        const turtleLifetime = 10000;
-
-
-        // Filter out turtles that have exceeded their lifetime
-        this.object_queue = this.object_queue.filter(obj => {
-            // if (obj.type === "turtle" && currentTime - obj.creationTime > turtleLifetime) {
-            //     return false; // Remove expired turtles
-            // }
-            return true;
-        });
-
-        // Initialize an array to hold fish that will be removed due to collisions with turtles
-        let fishToRemove = [];
-
-        for (let i = 0; i < this.object_queue.length; i++) {
-            const obj = this.object_queue[i];
-            if (currentTime - obj.lastDuplicationTime < fishCooldownPeriod) {
-                continue; // Skip if still in cooldown
+        const movementRandomizationInterval = 5; // Interval to randomize movement again, in seconds
+    
+        let fishToRemove = []; // Hold fish that will be removed due to collisions
+    
+        this.object_queue.forEach((obj, index) => {
+            // Exclude coins from random movement, but still move them and check boundaries
+            if (obj.type !== "coin") {
+                // Randomize movement for each fish or turtle at defined intervals
+                if (!obj.lastRandomizationTime || currentTime - obj.lastRandomizationTime > movementRandomizationInterval * 1000) {
+                    obj.direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized();
+                    obj.speed = Math.random() * 0.05 + 0.01; // Adjust the speed range as needed
+                    obj.rotation = Math.random() * 2 * Math.PI;
+                    obj.lastRandomizationTime = currentTime;
+                }
+                // Move objects based on their speed and direction
+                obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
             }
-
-            for (let j = i + 1; j < this.object_queue.length; j++) {
-                const fish1 = this.object_queue[i];
-                const fish2 = this.object_queue[j];
-                const distance = fish1.pos.minus(fish2.pos).norm();
-
-                if (distance < collision_threshold && currentTime - fish2.lastDuplicationTime >= fishCooldownPeriod) {
-                    // If a turtle collides with a fish, mark the fish for removal
-                    if (fish1.type === "coin" && fish2.type !== "coin") {
-                        fishToRemove.push(i); // Mark fish2 for removal
-                        this.points += 1;
-                    } else if (fish2.type === "coin" && fish1.type !== "coin") {
-                        fishToRemove.push(j); // Mark fish1 for removal
-                        this.points += 1;
+        });
+    
+        // Check for collisions between objects and adjust for aquarium bounds for all objects, including coins
+        const aquariumBounds = { minX: -9.7, maxX: 9.7, minY: -4.7, maxY: 4.7, minZ: -9.7, maxZ: 9.7 };
+        this.object_queue.forEach((obj, index) => {
+            for (let j = index + 1; j < this.object_queue.length; j++) {
+                const other = this.object_queue[j];
+                const distance = obj.pos.minus(other.pos).norm();
+                if (distance < collision_threshold) {
+                    // Determine action based on object types
+                    if (obj.type === "coin" && other.type !== "coin") {
+                        fishToRemove.push(index);
+                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : 1;
+                    } else if (other.type === "coin" && obj.type !== "coin") {
+                        fishToRemove.push(j);
+                        this.points += (obj.type === "turtle") ? 2 : (obj.type === "shark") ? 4 : 1;
                     }
-                    //duplication removed
-                    /*
-                    else {
-                        // Handle duplication logic here (similar to previous implementation)
-                        let newObject = {
-                            ...fish1,
-                            pos: fish1.pos.plus(vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)),
-                            direction: vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(),
-                            lastDuplicationTime: currentTime,
-                        };
-
-
-                        if (fish1.type === "turtle") {
-                            newObject.creationTime = currentTime; // For new turtles
-                        }
-
-                        new_fish.push(newObject);
-                        fish1.lastDuplicationTime = currentTime;
-                        fish2.lastDuplicationTime = currentTime;
-
-
-                    }
-                    */
                 }
             }
-        }
-
-        // Remove fish that collided with turtles
-        fishToRemove = [...new Set(fishToRemove)]; // Remove duplicates
-        fishToRemove.sort((a, b) => b - a); // Sort in descending order for safe removal
-        for (let index of fishToRemove) {
-            this.object_queue.splice(index, 1); // Remove fish at index
-        }
-
-        // Add new fish (or turtles) to the object queue
-        this.object_queue = [...this.object_queue, ...new_fish];
+            // Boundary check for all objects, including coins
+            if (obj.pos[0] < aquariumBounds.minX || obj.pos[0] > aquariumBounds.maxX) obj.direction[0] *= -1;
+            if (obj.pos[1] < aquariumBounds.minY || obj.pos[1] > aquariumBounds.maxY) obj.direction[1] *= -1;
+            if (obj.pos[2] < aquariumBounds.minZ || obj.pos[2] > aquariumBounds.maxZ) obj.direction[2] *= -1;
+    
+            // Specifically for coins, move them based on their speed and direction
+            if (obj.type === "coin") {
+                obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
+            }
+        });
+    
+        // Remove collided or collected objects
+        fishToRemove = [...new Set(fishToRemove)].sort((a, b) => b - a); // Remove duplicates and sort in descending order for safe removal
+        fishToRemove.forEach(index => this.object_queue.splice(index, 1));
     }
+    
+    
+    
+    
+    // update_fish(context, program_state) {
+    //     const collision_threshold = 0.8; // Adjust based on your scene scale
+    //     let new_fish = []; // Temporarily hold new fish to add after checking all collisions
+    //     const fishCooldownPeriod = 2000; // Cooldown period for fish in milliseconds
+    //     const currentTime = program_state.animation_time; // Current time in milliseconds
+    //     const turtleLifetime = 10000;
+
+
+    //     // Filter out turtles that have exceeded their lifetime
+    //     this.object_queue = this.object_queue.filter(obj => {
+    //         // if (obj.type === "turtle" && currentTime - obj.creationTime > turtleLifetime) {
+    //         //     return false; // Remove expired turtles
+    //         // }
+    //         return true;
+    //     });
+
+    //     // Initialize an array to hold fish that will be removed due to collisions with turtles
+    //     let fishToRemove = [];
+
+    //     for (let i = 0; i < this.object_queue.length; i++) {
+    //         const obj = this.object_queue[i];
+    //         if (currentTime - obj.lastDuplicationTime < fishCooldownPeriod) {
+    //             continue; // Skip if still in cooldown
+    //         }
+
+    //         for (let j = i + 1; j < this.object_queue.length; j++) {
+    //             const fish1 = this.object_queue[i];
+    //             const fish2 = this.object_queue[j];
+    //             const distance = fish1.pos.minus(fish2.pos).norm();
+
+    //             if (distance < collision_threshold && currentTime - fish2.lastDuplicationTime >= fishCooldownPeriod) {
+    //                 // If a turtle collides with a fish, mark the fish for removal
+    //                 if (fish1.type === "coin" && fish2.type !== "coin") {
+    //                     fishToRemove.push(i); // Mark fish2 for removal
+    //                     this.points += 1;
+    //                 } else if (fish2.type === "coin" && fish1.type !== "coin") {
+    //                     fishToRemove.push(j); // Mark fish1 for removal
+    //                     this.points += 1;
+    //                 }
+    //                 //duplication removed
+    //                 /*
+    //                 else {
+    //                     // Handle duplication logic here (similar to previous implementation)
+    //                     let newObject = {
+    //                         ...fish1,
+    //                         pos: fish1.pos.plus(vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1)),
+    //                         direction: vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(),
+    //                         lastDuplicationTime: currentTime,
+    //                     };
+
+
+    //                     if (fish1.type === "turtle") {
+    //                         newObject.creationTime = currentTime; // For new turtles
+    //                     }
+
+    //                     new_fish.push(newObject);
+    //                     fish1.lastDuplicationTime = currentTime;
+    //                     fish2.lastDuplicationTime = currentTime;
+
+
+    //                 }
+    //                 */
+    //             }
+    //         }
+    //     }
+
+    //     // Remove fish that collided with turtles
+    //     fishToRemove = [...new Set(fishToRemove)]; // Remove duplicates
+    //     fishToRemove.sort((a, b) => b - a); // Sort in descending order for safe removal
+    //     for (let index of fishToRemove) {
+    //         this.object_queue.splice(index, 1); // Remove fish at index
+    //     }
+
+    //     // Add new fish (or turtles) to the object queue
+    //     this.object_queue = [...this.object_queue, ...new_fish];
+    // }
+
+    
+    update_sharks_and_coins(context, program_state) {
+        const coinCollectionThreshold = 0.5; // Distance at which a creature collects a coin
+        this.object_queue.forEach((obj, index) => {
+            // Only proceed if the object is a shark or turtle
+            if (obj.type === "shark" || obj.type === "turtle") {
+                // Find the nearest coin
+                let nearestCoinIndex = -1;
+                let nearestCoinDistance = Infinity;
+                this.object_queue.forEach((coin, coinIndex) => {
+                    if (coin.type === "coin") {
+                        let distance = coin.pos.minus(obj.pos).norm();
+                        if (distance < nearestCoinDistance) {
+                            nearestCoinDistance = distance;
+                            nearestCoinIndex = coinIndex;
+                        }
+                    }
+                });
+    
+                if (nearestCoinIndex !== -1 && nearestCoinDistance < coinCollectionThreshold) {
+                    // Collect the coin
+                    if (obj.type === "turtle") {
+                        this.points += 2; // Turtles gain 2 points
+                    } else if (obj.type === "shark") {
+                        this.points += 4; // Sharks gain 4 points
+                    }
+                    this.object_queue.splice(nearestCoinIndex, 1); // Remove the coin
+                } else if (nearestCoinIndex !== -1) {
+                    // Move towards the coin
+                    let directionToCoin = this.object_queue[nearestCoinIndex].pos.minus(obj.pos).normalized();
+                    let speed = (obj.type === "shark" ? 0.07 : 0.05); // Sharks could be faster
+                    obj.pos = obj.pos.plus(directionToCoin.times(speed * program_state.animation_delta_time / 1000));
+                    obj.rotation = Math.atan2(directionToCoin[1], directionToCoin[0]); // Orient creature towards coin
+                }
+            }
+        });
+    }
+    
+    
 
 
     display(context, program_state) {
@@ -343,6 +445,16 @@ export class project extends Scene {
             program_state.set_camera(this.initial_camera_location);
         }
 
+        if (this.show_points_flag) {
+            // Display points
+            let text_transform = Mat4.identity().times(Mat4.translation(-5, 6, -11, 0));
+            // Set the string to the current points value
+            this.shapes.text.set_string("Points: " + this.points.toString(), context.context);
+            // Draw the text
+            this.shapes.text.draw(context, program_state, text_transform, this.text_image);
+        }
+
+
         if (this.top_view_camera) {
             let top_view_camera_position = vec3(0, 30, 17);
             let looking_at_point = vec3(0, 1, 0);
@@ -351,7 +463,7 @@ export class project extends Scene {
             // Display points
             let text_transform = Mat4.identity().times(Mat4.translation(-5,6,-11,0))
             // Sample the "strings" array and draw them onto a cube.
-            this.shapes.text.set_string("Points:" + this.points.toString(), context.context);
+            //this.shapes.text.set_string("Points:" + this.points.toString(), context.context);
             this.shapes.text.draw(context, program_state, text_transform, this.text_image);
         } else {
             program_state.set_camera(this.initial_camera_location);
@@ -392,7 +504,8 @@ export class project extends Scene {
             const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
                 vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
                     (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
-
+ 
+        
             canvas.addEventListener("contextmenu", e => {
                 e.preventDefault();
                 this.mousex = mouse_position(e)[0];
@@ -410,6 +523,8 @@ export class project extends Scene {
 
         // Update and draw each fish
         this.object_queue.forEach(obj => {
+
+
             // Check boundaries and reflect direction if hitting a wall
             if (obj.pos[0] < aquarium_bounds.minX || obj.pos[0] > aquarium_bounds.maxX) {
                 obj.direction[0] *= -1;
@@ -428,7 +543,7 @@ export class project extends Scene {
             let transform = Mat4.translation(...obj.pos.to3())
                 .times(Mat4.rotation(obj.rotation, 0, 1, 0)) // Apply rotation
                 .times(Mat4.scale(obj.size, obj.size, obj.size)); // Apply scale
-
+           
             // Draw the fish
             if (obj.type === "nemo") {
                 this.shapes.nemo.draw(context, program_state, transform, this.materials.test)
@@ -456,6 +571,7 @@ export class project extends Scene {
         });
 
         this.update_fish(context, program_state);
+        this.update_sharks_and_coins(context, program_state);
 
 
         const gl = context.context || context; // Get the WebGL context
@@ -509,7 +625,7 @@ export class project extends Scene {
             this.shapes.box.draw(context, program_state, pillar_transform, this.materials.silver_material);
         });
 
-
+    
         // Randomly spawn coins
         this.coin_counter -= 1;
         if (this.coin_counter === 0) {
