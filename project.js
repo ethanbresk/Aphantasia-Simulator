@@ -18,8 +18,9 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 0;
+        this.points = 2;
         this.mouse_listener_added = false;
+        this.coin_counter = 360;
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
@@ -37,7 +38,9 @@ export class project extends Scene {
             goldFish: new Shape_From_File("assets/goldfish.obj"),
             nemo: new Shape_From_File("assets/nemo.obj"),
             turtle: new Shape_From_File("assets/turtle.obj"),
-            coin: new Shape_From_File("assets/coin.obj")
+            shark: new Shape_From_File("assets/shark.obj"),
+            coin: new Shape_From_File("assets/coin.obj"),
+            text: new Text_Line(35)
         };
 
         // textured phong
@@ -46,10 +49,15 @@ export class project extends Scene {
         // *** Materials
         this.materials = {
             test: new Material(new defs.Phong_Shader(),
-                {ambient: .4, diffusivity: .6, color: hex_color("#FFFF00")}),
+                {ambient: .4, diffusivity: .6, color: hex_color("#FFA500")}),
             test2: new Material(new Gouraud_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#992828")}),
-            water: new Material(textured, {ambient: .5, diffusivity: 1, specularity: 1, texture: new Texture("assets/water1.jpeg")}),
+            water: new Material(textured, {
+                ambient: .5,
+                diffusivity: 1,
+                specularity: 1,
+                texture: new Texture("assets/water1.jpeg")
+            }),
             aquarium: new Material(new defs.Phong_Shader(),
                 {ambient: 0.4, diffusivity: 0.6, color: color(1, 1, 1, 0.5)}),
             // menu
@@ -57,7 +65,18 @@ export class project extends Scene {
                 {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#FFFFFF")}),
             menu_selected: new Material(textured,
                 {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#1303fc")}),
-            turtle: new Material(textured, {ambient: .5, diffusivity: 1, specularity: 1, texture: new Texture("assets/turtle_texture.jpg")}),
+            turtle: new Material(textured, {
+                ambient: .5,
+                diffusivity: 1,
+                specularity: 1,
+                texture: new Texture("assets/turtle_texture.jpg")
+            }),
+            food_texture: new Material(textured, {
+                ambient: .5,
+                diffusivity: 0,
+                specularity: 0,
+                texture: new Texture("assets/food_texture.png")
+            }),
             //menubuttons: new Material(textured,
             //{ambient: 0.9, diffusivity: 1, specularity: 1,  texture: new Texture("assets/bubble3.png")}),
         }
@@ -68,6 +87,12 @@ export class project extends Scene {
         // mouse position
         this.mousex;
         this.mousey;
+
+        // To show text you need a Material like this one:
+        this.text_image = new Material(textured, {
+            ambient: 0.9, diffusivity: 0.9, specularity: 1,
+            texture: new Texture("assets/text.png")
+        });
 
         this.num_fish = 10; // Number of fish
         this.num_fish = 10; // Number of fish
@@ -112,9 +137,6 @@ export class project extends Scene {
             {ambient: 0.1, diffusivity: 0.2, specularity: 1, color: hex_color("#C0C0C0")});
 
 
-
-
-
     }
 
     draw_with_mouse(context, program_state) {
@@ -123,8 +145,11 @@ export class project extends Scene {
         let aquarium_bounds = {minX: -10, maxX: 10, minY: -5, maxY: 5, minZ: -10, maxZ: 10};
 
         let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
-        let obj_scale = 0.25; // Fixed scale for simplicity
 
+        let obj_scale = 0.3; // Fixed scale for simplicity
+        if (this.fish_to_draw === "nemo") { obj_scale = 0.2 }
+        if (this.fish_to_draw === "turtle") { obj_scale = 0.5 }
+        if (this.fish_to_draw === "shark") { obj_scale = 1 }
         // Define movement attributes for the new fish
 
 
@@ -161,7 +186,15 @@ export class project extends Scene {
                 obj.creationTime = currentTime;
             }
 
-            this.object_queue.push(obj);
+            let needed_points = 0;
+            if (this.fish_to_draw === "nemo") { needed_points = 2 }
+            if (this.fish_to_draw === "turtle") { needed_points = 5 }
+            if (this.fish_to_draw === "shark") { needed_points = 20 }
+
+            if ((this.points - needed_points) >= 0) {
+                this.object_queue.push(obj);
+                this.points -= needed_points;
+            }
         }
 
     }
@@ -171,13 +204,14 @@ export class project extends Scene {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
 
         this.control_panel.innerHTML += "Select type of fish to spawn:<br>";
-        this.key_triggered_button("Select: Nemo", ["1"], () => this.set_fish_nemo());
-        this.key_triggered_button("Select: Turtle", ["2"], () => this.set_fish_turtle());
+        this.key_triggered_button("2p: Nemo", ["1"], () => this.set_fish_nemo());
+        this.key_triggered_button("5p: Turtle", ["2"], () => this.set_fish_turtle());
+        this.key_triggered_button("20p: Shark", ["3"], () => this.set_fish_shark());
         this.new_line();
         this.new_line();
         this.live_string(box => box.textContent = "Functionality controls:");
         this.new_line();
-        this.key_triggered_button("Delete last fish", ["q"], () => this.delete_last_fish());
+        this.key_triggered_button("Refund last fish", ["q"], () => this.delete_last_fish());
         this.new_line();
         this.key_triggered_button("Toggle top view camera", ["c"], () => {
             this.top_view_camera = !this.top_view_camera; // Toggle the camera mode
@@ -188,25 +222,28 @@ export class project extends Scene {
             }
         });
         // Lifespan adjustment buttons
-        this.control_panel.appendChild(document.createTextNode("Turtle Lifespan (seconds): "));
-        this.key_triggered_button("-5s", ["-"], () => {
-            this.turtleLifespan = Math.max(5000, this.turtleLifespan - 5000); // Minimum of 5 seconds
-            console.log(`Turtle Lifespan: ${this.turtleLifespan / 1000} seconds`);
-        });
-        this.key_triggered_button("+5s", ["+"], () => {
-            this.turtleLifespan += 5000; // Increase lifespan by 5 seconds
-            console.log(`Turtle Lifespan: ${this.turtleLifespan / 1000} seconds`);
-        });
+        // this.control_panel.appendChild(document.createTextNode("Turtle Lifespan (seconds): "));
+        // this.key_triggered_button("-5s", ["-"], () => {
+        //     this.turtleLifespan = Math.max(5000, this.turtleLifespan - 5000); // Minimum of 5 seconds
+        //     console.log(`Turtle Lifespan: ${this.turtleLifespan / 1000} seconds`);
+        // });
+        // this.key_triggered_button("+5s", ["+"], () => {
+        //     this.turtleLifespan += 5000; // Increase lifespan by 5 seconds
+        //     console.log(`Turtle Lifespan: ${this.turtleLifespan / 1000} seconds`);
+        // });
 
-    }
-
-    increment_points() {
-        this.points += 1;
     }
 
     delete_last_fish() {
-        if (this.object_queue.length > 0) {
-            this.object_queue.pop();
+        for (let i = this.object_queue.length-1; i >= 0; i--) {
+            if (this.object_queue[i].type === "coin") continue;
+            else {
+                if (this.object_queue[i].type === "nemo") { this.points += 2 }
+                if (this.object_queue[i].type === "turtle") { this.points += 5 }
+                if (this.object_queue[i].type === "shark") { this.points += 20 }
+                this.object_queue.splice(i, 1); // Remove fish at index
+                break;
+            }
         }
     }
 
@@ -215,6 +252,9 @@ export class project extends Scene {
     }
     set_fish_turtle() {
         this.fish_to_draw = "turtle";
+    }
+    set_fish_shark() {
+        this.fish_to_draw = "shark";
     }
 
 
@@ -228,9 +268,9 @@ export class project extends Scene {
 
         // Filter out turtles that have exceeded their lifetime
         this.object_queue = this.object_queue.filter(obj => {
-            if (obj.type === "turtle" && currentTime - obj.creationTime > turtleLifetime) {
-                return false; // Remove expired turtles
-            }
+            // if (obj.type === "turtle" && currentTime - obj.creationTime > turtleLifetime) {
+            //     return false; // Remove expired turtles
+            // }
             return true;
         });
 
@@ -250,11 +290,16 @@ export class project extends Scene {
 
                 if (distance < collision_threshold && currentTime - fish2.lastDuplicationTime >= fishCooldownPeriod) {
                     // If a turtle collides with a fish, mark the fish for removal
-                    if (fish1.type === "turtle" && fish2.type !== "turtle") {
-                        fishToRemove.push(j); // Mark fish2 for removal
-                    } else if (fish2.type === "turtle" && fish1.type !== "turtle") {
-                        fishToRemove.push(i); // Mark fish1 for removal
-                    } else {
+                    if (fish1.type === "coin" && fish2.type !== "coin") {
+                        fishToRemove.push(i); // Mark fish2 for removal
+                        this.points += 1;
+                    } else if (fish2.type === "coin" && fish1.type !== "coin") {
+                        fishToRemove.push(j); // Mark fish1 for removal
+                        this.points += 1;
+                    }
+                    //duplication removed
+                    /*
+                    else {
                         // Handle duplication logic here (similar to previous implementation)
                         let newObject = {
                             ...fish1,
@@ -263,6 +308,7 @@ export class project extends Scene {
                             lastDuplicationTime: currentTime,
                         };
 
+
                         if (fish1.type === "turtle") {
                             newObject.creationTime = currentTime; // For new turtles
                         }
@@ -270,7 +316,10 @@ export class project extends Scene {
                         new_fish.push(newObject);
                         fish1.lastDuplicationTime = currentTime;
                         fish2.lastDuplicationTime = currentTime;
+
+
                     }
+                    */
                 }
             }
         }
@@ -287,8 +336,6 @@ export class project extends Scene {
     }
 
 
-
-
     display(context, program_state) {
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
@@ -301,13 +348,17 @@ export class project extends Scene {
             let looking_at_point = vec3(0, 1, 0);
             let up_direction = vec3(0, 0, -1);
             program_state.set_camera(Mat4.look_at(top_view_camera_position, looking_at_point, up_direction));
+            // Display points
+            let text_transform = Mat4.identity().times(Mat4.translation(-5,6,-11,0))
+            // Sample the "strings" array and draw them onto a cube.
+            this.shapes.text.set_string("Points:" + this.points.toString(), context.context);
+            this.shapes.text.draw(context, program_state, text_transform, this.text_image);
         } else {
             program_state.set_camera(this.initial_camera_location);
         }
 
         // Decide which material to use based on the top_view_camera flag
         let aquarium_material = this.top_view_camera ? this.materials.aquarium_glass : this.materials.aquarium_glass;
-
 
         program_state.projection_transform = Mat4.perspective(Math.PI / 4, context.width / context.height, .1, 1000);
 
@@ -352,9 +403,9 @@ export class project extends Scene {
             this.mouse_listener_added = true; // Set the flag to true
         }
         const aquarium_bounds = {
-            minX: -9.8, maxX: 9.8,
-            minY: -4.8, maxY: 4.8,
-            minZ: -9.8, maxZ: 9.8
+            minX: -9.7, maxX: 9.7,
+            minY: -4.7, maxY: 4.7,
+            minZ: -9.7, maxZ: 9.7
         };
 
         // Update and draw each fish
@@ -381,10 +432,26 @@ export class project extends Scene {
             // Draw the fish
             if (obj.type === "nemo") {
                 this.shapes.nemo.draw(context, program_state, transform, this.materials.test)
-            } else if (obj.type === "turtle") {
-                transform = transform.times(Mat4.rotation(Math.PI / 1,0, Math.PI / 2, 1));
 
+                this.pos_vec = vec4(obj.pos[0], obj.pos[1], obj.pos[2], 1)
+                let P = program_state.projection_transform;
+                let V = program_state.camera_inverse;
+                let P_times_V = Mat4.inverse(P.times(V));
+                let pos_ndc_far = P_times_V.times(this.pos_vec);
+
+                //console.log("pos: " + pos_ndc_far + " x:" + this.mousex + " y:" + this.mousey)
+            }
+            else if (obj.type === "turtle") {
+                transform = transform.times(Mat4.rotation(Math.PI / 1, 0, Math.PI / 2, 1));
                 this.shapes.turtle.draw(context, program_state, transform, this.materials.turtle)
+            }
+            else if (obj.type === "shark") {
+                transform = transform.times(Mat4.rotation(Math.PI / 1, 0, Math.PI / 2, 1));
+                this.shapes.shark.draw(context, program_state, transform, this.materials.turtle)
+            }
+            else if (obj.type === "coin") {
+                transform = transform.times(Mat4.rotation(Math.PI / 1, 0, 1, 1))
+                this.shapes.sphere.draw(context, program_state, transform, this.materials.menu_selected)
             }
         });
 
@@ -392,6 +459,7 @@ export class project extends Scene {
 
 
         const gl = context.context || context; // Get the WebGL context
+
 
         let aquarium_transform = Mat4.identity();
         aquarium_transform = aquarium_transform.times(Mat4.translation(0, 0, 0)); // Adjust position
@@ -412,7 +480,7 @@ export class project extends Scene {
 
         this.shapes.box.draw(context, program_state, aquarium_transform, aquarium_material);
 
-        let base_transform = Mat4.translation(0, -5 -0.55, 0) // Move base slightly below the aquarium, adjust Y translation considering the new thickness
+        let base_transform = Mat4.translation(0, -5 - 0.55, 0) // Move base slightly below the aquarium, adjust Y translation considering the new thickness
             .times(Mat4.scale(11.2, 0.5, 11.2)); // Make the base slightly larger and thicker than before
 
 
@@ -436,23 +504,52 @@ export class project extends Scene {
         // Draw each pillar
         positions.forEach(position => {
             let pillar_transform = Mat4.translation(...position)
-                .times(Mat4.translation(0, pillar_height * 2/ 2, 0)) // Move up so the base of the pillar is at the specified position
+                .times(Mat4.translation(0, pillar_height * 2 / 2, 0)) // Move up so the base of the pillar is at the specified position
                 .times(Mat4.scale(pillar_radius, pillar_height, pillar_radius));
             this.shapes.box.draw(context, program_state, pillar_transform, this.materials.silver_material);
         });
 
 
-        // Optionally, disable blending if it's not needed for subsequent drawing operations
-        gl.disable(gl.BLEND);
-
         // Randomly spawn coins
-        this.do_spawn_coin = Math.random() * 15 - 5;
+        this.coin_counter -= 1;
+        if (this.coin_counter === 0) {
 
-        if (do_spawn_coin === 1) {
+            let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
+            let obj_scale = 0.25; // Fixed scale for simplicity
+            var x_coord = Math.ceil(Math.random()) * (Math.round(Math.random()) ? 1 : -1)
+            var y_coord = Math.ceil(Math.random()) * (Math.round(Math.random()) ? 1 : -1)
+            let z_coord = Math.random() * (0.99 - 0.94) + 0.94;
+            let pos_ndc_far = vec4(x_coord, y_coord, z_coord, 1.0);
+            let P = program_state.projection_transform;
+            let V = program_state.camera_inverse;
+            let pos_world_far = vec4(x_coord, y_coord, z_coord, 1.0);
+            pos_world_far.scale_by(1 / pos_world_far[3]);
+            const currentTime = program_state.animation_time;
 
+            let direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(); //Math.random()*2-1
+            let speed = Math.random() * (4 - 2) + 2; // Adjusted speed for faster movement
+            let rotation = 1 * Math.PI;
+
+            let obj = {
+                pos: pos_world_far, // Use the calculated world position
+                color: obj_color,
+                size: obj_scale,
+                direction: direction,
+                speed: speed,
+                rotation: rotation,
+                type: "coin",
+                lastDuplicationTime: -Infinity,
+            };
+
+            this.object_queue.push(obj);
+            this.coin_counter = 360;
         }
 
+
+        // Optionally, disable blending if it's not needed for subsequent drawing operations
+        gl.disable(gl.BLEND);
     }
+
     draw_menu(context, program_state, model_transform) {
 
         // draw item 1: floral coral
@@ -464,15 +561,13 @@ export class project extends Scene {
         let button1y = (item1_circle_trans[1][3] - (10.5)) / 12;
 
         // check if mouse click on item 1 button
-        if ((this.mousex < button1x + 0.1 && this.mousex > button1x - 0.1) && (this.mousey < button1y + 0.12 && this.mousey > button1y - 0.1) && (this.sand_dollars - price1 >= 0))
-        {
+        if ((this.mousex < button1x + 0.1 && this.mousex > button1x - 0.1) && (this.mousey < button1y + 0.12 && this.mousey > button1y - 0.1) && (this.sand_dollars - price1 >= 0)) {
             // if clicked --> animate item so that we know it is clicked
             this.shapes.circle.draw(context, program_state, item1_circle_trans, this.materials.menu_selected);
 
             // draw item on next mouse click
             this.fish_to_draw = "nemo";
-        }
-        else {
+        } else {
             this.shapes.circle.draw(context, program_state, item1_circle_trans, this.materials.menu_selected);
         }
 
@@ -483,8 +578,6 @@ export class project extends Scene {
 
     }
 }
-
-
 
 class Gouraud_Shader extends Shader {
     // This is a Shader using Phong_Shader as template
