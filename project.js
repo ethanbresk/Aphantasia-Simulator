@@ -18,7 +18,7 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 100;
+        this.points = 4;
         this.mouse_listener_added = false;
         this.coin_counter = 360;
         this.show_points_flag = false;
@@ -495,7 +495,7 @@ export class project extends Scene {
 
 
             }
-            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin") {
+            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin" || obj.type === "nemo") {
                 // Movement and behavior logic unchanged, see previous implementation...
                 
                 // Ensure objects stay within bounds
@@ -523,7 +523,7 @@ export class project extends Scene {
                     obj.direction[2] = -obj.direction[2];
                 }
 
-                if (obj.type === "shark" || obj.type === "turtle") {
+                if (obj.type === "shark" || obj.type === "turtle" || obj.type == "nemo") {
         
                     // Periodically change movement direction to simulate more active movement around the tank
                     if (!obj.lastRandomMovementTime || currentTime - obj.lastRandomMovementTime >= randomMovementInterval) {
@@ -538,7 +538,7 @@ export class project extends Scene {
                     }
         
                     // Set speed: make turtles move faster than sharks
-                    obj.speed = obj.type === "turtle" ? 1 : 0.5; // Increased turtle speed
+                    obj.speed = obj.type === "turtle" ? 1 : obj.type === "nemo" ? .3 : 0.5; // Increased turtle speed
         
                     // Move objects based on their speed and direction
                     obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
