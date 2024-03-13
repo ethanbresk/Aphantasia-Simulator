@@ -18,7 +18,7 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 20;
+        this.points = 4;
         this.mouse_listener_added = false;
         this.coin_counter = 360;
 
