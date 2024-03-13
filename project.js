@@ -281,6 +281,8 @@ export class project extends Scene {
         this.fish_to_draw = "whale";
     }
 
+
+
     update_fish(context, program_state) {
         const collision_threshold = 0.8; // Adjust based on your scene scale
         const sharkCollectionThreshold = 4; // Increased threshold for sharks
@@ -309,15 +311,28 @@ export class project extends Scene {
                     obj.speed = Math.random() * 0.2 + 0.05;  
                     obj.rotation = Math.atan2(obj.direction[1], obj.direction[0]);
                 }
-    
-                // Move objects based on their speed and direction
-                obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
+                
+     
             }
+            
+            // Move objects based on their speed and direction
+            obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
+       
         });
-    
+
         // Check for collisions between objects and adjust for aquarium bounds for all objects, including coins
         const aquariumBounds = { minX: -9.5, maxX: 9.5, minY: -4.2, maxY: 4.7, minZ: -9.5, maxZ: 9.5 };
+        const whaleBounds = {
+            minX: aquariumBounds.minX + 3, // Adjust these values to make the bounds smaller for the whale
+            maxX: aquariumBounds.maxX - 3,
+            minY: aquariumBounds.minY + 1,
+            maxY: aquariumBounds.maxY - 1,
+            minZ: aquariumBounds.minZ + 3,
+            maxZ: aquariumBounds.maxZ - 3,
+        };
+        
         this.object_queue.forEach((obj, index) => {
+            
             for (let j = index + 1; j < this.object_queue.length; j++) {
                 const other = this.object_queue[j];
                 const distance = obj.pos.minus(other.pos).norm();
@@ -334,9 +349,18 @@ export class project extends Scene {
                 }
             }
             // Boundary check for all objects, including coins
-            if (obj.pos[0] < aquariumBounds.minX || obj.pos[0] > aquariumBounds.maxX) obj.direction[0] *= -1;
-            if (obj.pos[1] < aquariumBounds.minY || obj.pos[1] > aquariumBounds.maxY) obj.direction[1] *= -1;
-            if (obj.pos[2] < aquariumBounds.minZ || obj.pos[2] > aquariumBounds.maxZ) obj.direction[2] *= -1;
+            if (obj.type === "whale") {
+                if (obj.pos[0] < whaleBounds.minX || obj.pos[0] > whaleBounds.maxX) obj.direction[0] *= -1;
+                if (obj.pos[1] < whaleBounds.minY || obj.pos[1] > whaleBounds.maxY) obj.direction[1] *= -1;
+                if (obj.pos[2] < whaleBounds.minZ || obj.pos[2] > whaleBounds.maxZ) obj.direction[2] *= -1;
+            } else {
+                // Keep original bounds for other objects
+                if (obj.pos[0] < aquariumBounds.minX || obj.pos[0] > aquariumBounds.maxX) obj.direction[0] *= -1;
+                if (obj.pos[1] < aquariumBounds.minY || obj.pos[1] > aquariumBounds.maxY) obj.direction[1] *= -1;
+                if (obj.pos[2] < aquariumBounds.minZ || obj.pos[2] > aquariumBounds.maxZ) obj.direction[2] *= -1;
+            }
+
+            
     
             // Specifically for coins, move them based on their speed and direction
             if (obj.type === "coin") {
@@ -440,6 +464,37 @@ export class project extends Scene {
 
         this.object_queue.forEach((obj, index) => {
 
+
+            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin" || obj.type === "nemo" || obj.type === "whale") {
+
+                 // Ensure objects stay within bounds
+                 if (obj.pos[0] < aquariumBounds.minX) {
+                    obj.pos[0] = aquariumBounds.minX;
+                    obj.direction[0] = -obj.direction[0];
+                } else if (obj.pos[0] > aquariumBounds.maxX) {
+                    obj.pos[0] = aquariumBounds.maxX;
+                    obj.direction[0] = -obj.direction[0];
+                }
+    
+                if (obj.pos[1] < aquariumBounds.minY) {
+                    obj.pos[1] = aquariumBounds.minY;
+                    obj.direction[1] = -obj.direction[1];
+                } else if (obj.pos[1] > aquariumBounds.maxY) {
+                    obj.pos[1] = aquariumBounds.maxY;
+                    obj.direction[1] = -obj.direction[1];
+                }
+    
+                if (obj.pos[2] < aquariumBounds.minZ) {
+                    obj.pos[2] = aquariumBounds.minZ;
+                    obj.direction[2] = -obj.direction[2];
+                } else if (obj.pos[2] > aquariumBounds.maxZ) {
+                    obj.pos[2] = aquariumBounds.maxZ;
+                    obj.direction[2] = -obj.direction[2];
+                }
+
+
+
+            }
             if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin") {
                 // Movement and behavior logic unchanged, see previous implementation...
                 
