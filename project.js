@@ -79,7 +79,9 @@ export class project extends Scene {
                 diffusivity: 1,
                 specularity: 1,
                 texture: new Texture("assets/turtle_texture.jpg"),
-                color: color(0.3, 0.3, 0.3, 1)
+                color: color(0.3, 0.45, 0.7, 1)
+
+
             }),
             turtle: new Material(textured, {
                 ambient: 0.5,
