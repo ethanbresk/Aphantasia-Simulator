@@ -18,7 +18,7 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 4;
+        this.points = 100;
         this.mouse_listener_added = false;
         this.coin_counter = 360;
         this.show_points_flag = false;
@@ -40,6 +40,7 @@ export class project extends Scene {
             nemo: new Shape_From_File("assets/nemo.obj"),
             turtle: new Shape_From_File("assets/turtle.obj"),
             shark: new Shape_From_File("assets/shark.obj"),
+            whale: new Shape_From_File("assets/whale.obj"),
             coin: new Shape_From_File("assets/coin.obj"),
             text: new Text_Line(35)
         };
@@ -73,6 +74,13 @@ export class project extends Scene {
                 texture: new Texture("assets/turtle_texture.jpg"),
                 color: color(0.3, 0.3, 0.3, 1)
             }),
+            whale: new Material(textured, {
+                ambient: .5,
+                diffusivity: 1,
+                specularity: 1,
+                texture: new Texture("assets/turtle_texture.jpg"),
+                color: color(0.3, 0.3, 0.3, 1)
+            }),
             turtle: new Material(textured, {
                 ambient: 0.5,
                 diffusivity: 1,
@@ -80,7 +88,6 @@ export class project extends Scene {
                 color: color(0, 0.5, 0, 1), // A green tone filter
                 texture: new Texture("assets/turtle_texture.jpg")
             }),
-            
 
             food_texture: new Material(textured, {
                 ambient: .5,
@@ -111,18 +118,8 @@ export class project extends Scene {
             texture: new Texture("assets/text.png")
         });
 
-        this.num_fish = 10; // Number of fish
-        this.num_fish = 10; // Number of fish
-        this.fish_states = Array.from({length: this.num_fish}, () => ({
-            position: vec3(Math.random() * 10 - 5, Math.random() * 5, Math.random() * 10 - 5), // Random position
-            direction: vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(), // Random direction
-            speed: Math.random() * 0.1 + 0.1, // Random speed
-            rotation: Math.random() * 2 * Math.PI // Random rotation around y-axis
-        }));
-
         this.initial_camera_location = Mat4.look_at(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
         //this.initial_camera_location = Mat4.translation(5, -10, -30);
-
 
         this.materials.aquarium_glass = new Material(new defs.Phong_Shader(),
             {
@@ -165,6 +162,7 @@ export class project extends Scene {
         if (this.fish_to_draw === "nemo") { obj_scale = 0.2 }
         if (this.fish_to_draw === "turtle") { obj_scale = 0.5 }
         if (this.fish_to_draw === "shark") { obj_scale = 1 }
+        if (this.fish_to_draw === "whale") { obj_scale = 4 }
         // Define movement attributes for the new fish
 
         // Position calculation as before
@@ -204,6 +202,7 @@ export class project extends Scene {
             if (this.fish_to_draw === "nemo") { needed_points = 2 }
             if (this.fish_to_draw === "turtle") { needed_points = 5 }
             if (this.fish_to_draw === "shark") { needed_points = 20 }
+            if (this.fish_to_draw === "whale") { needed_points = 100 }
 
             if ((this.points - needed_points) >= 0) {
                 this.object_queue.push(obj);
@@ -221,6 +220,7 @@ export class project extends Scene {
         this.key_triggered_button("2p: Nemo", ["1"], () => this.set_fish_nemo());
         this.key_triggered_button("5p: Turtle", ["2"], () => this.set_fish_turtle());
         this.key_triggered_button("20p: Shark", ["3"], () => this.set_fish_shark());
+        this.key_triggered_button("100p: Whale", ["4"], () => this.set_fish_whale());
         this.new_line();
         this.new_line();
         this.live_string(box => box.textContent = "Functionality controls:");
@@ -259,6 +259,7 @@ export class project extends Scene {
                 if (this.object_queue[i].type === "nemo") { this.points += 2 }
                 if (this.object_queue[i].type === "turtle") { this.points += 5 }
                 if (this.object_queue[i].type === "shark") { this.points += 20 }
+                if (this.object_queue[i].type === "whale") { this.points += 100 }
                 this.object_queue.splice(i, 1); // Remove fish at index
                 break;
             }
@@ -273,6 +274,9 @@ export class project extends Scene {
     }
     set_fish_shark() {
         this.fish_to_draw = "shark";
+    }
+    set_fish_whale() {
+        this.fish_to_draw = "whale";
     }
 
     update_fish(context, program_state) {
@@ -317,10 +321,10 @@ export class project extends Scene {
                     // Determine action based on object types
                     if (obj.type === "coin" && other.type !== "coin") {
                         fishToRemove.push(index);
-                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : 1;
+                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : (other.type === "shark") ? 8 : 1;
                     } else if (other.type === "coin" && obj.type !== "coin") {
                         fishToRemove.push(j);
-                        this.points += (obj.type === "turtle") ? 2 : (obj.type === "shark") ? 4 : 1;
+                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : (other.type === "shark") ? 8 : 1;
                     }
                 }
             }
@@ -420,6 +424,7 @@ export class project extends Scene {
     
     update_sharks_and_coins(context, program_state) {
         const coinCollectionThreshold = 0.8; // Distance at which a creature collects a coin
+        const whaleCollectionThreshold = 400; // Increased threshold for whales
         const sharkCollectionThreshold = 2; // Increased threshold for sharks
         const turtleCollectionThreshold = 1; // Increased threshold for turtles
         const targetUpdateInterval = 2000; // Interval to update target coin, in milliseconds
@@ -435,9 +440,9 @@ export class project extends Scene {
 
         this.object_queue.forEach((obj, index) => {
 
-            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin") {
+            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin" || obj.type === "whale") {
                 // Movement and behavior logic unchanged, see previous implementation...
-                
+                //console.log("a")
                 // Ensure objects stay within bounds
                 if (obj.pos[0] < aquariumBounds.minX) {
                     obj.pos[0] = aquariumBounds.minX;
@@ -463,8 +468,8 @@ export class project extends Scene {
                     obj.direction[2] = -obj.direction[2];
                 }
 
-                if (obj.type === "shark" || obj.type === "turtle") {
-        
+                if (obj.type === "shark" || obj.type === "turtle" || obj.type === "whale") {
+
                     // Periodically change movement direction to simulate more active movement around the tank
                     if (!obj.lastRandomMovementTime || currentTime - obj.lastRandomMovementTime >= randomMovementInterval) {
                         obj.direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized();
@@ -490,11 +495,22 @@ export class project extends Scene {
                     if (obj.targetCoinIndex !== undefined && obj.targetCoinIndex !== -1) {
                         let targetCoin = this.object_queue[obj.targetCoinIndex];
                         let distanceToTargetCoin = targetCoin.pos.minus(obj.pos).norm();
-                        let creatureCollectionThreshold = obj.type === "shark" ? sharkCollectionThreshold : turtleCollectionThreshold;
+                        let creatureCollectionThreshold = 0;
+                        console.log(obj.type)
+                        if (obj.type === "shark") { creatureCollectionThreshold = sharkCollectionThreshold }
+                        else if (obj.type === "whale") {
+                            creatureCollectionThreshold = whaleCollectionThreshold;
+                            console.log("a")
+                        }
+                        else if (obj.type === "turtle") { creatureCollectionThreshold = turtleCollectionThreshold }
+                        //let creatureCollectionThreshold = ((obj.type === "shark") ? sharkCollectionThreshold) : ((obj.type === "whale") ? whaleCollectionThreshold) : (turtleCollectionThreshold);
         
                         if (distanceToTargetCoin < creatureCollectionThreshold) {
                             // Collect the coin
-                            this.points += obj.type === "turtle" ? 2 : 4; // Turtles gain 2 points, sharks gain 4
+                            if (obj.type === "shark") { this.points += 2 }
+                            else if (obj.type === "whale") { this.points += 8 }
+                            else if (obj.type === "turtle") { this.points += 4 }
+                            //this.points += obj.type === "turtle" ? 2 : obj.type === "shark" ? 4 : 8; // Turtles gain 2 points, sharks gain 4
                             this.object_queue.splice(obj.targetCoinIndex, 1); // Remove the coin
                             delete obj.targetCoinIndex; // Clear target index
                         }
@@ -642,6 +658,10 @@ export class project extends Scene {
             else if (obj.type === "shark") {
                 transform = transform.times(Mat4.rotation(Math.PI / 1, 0, Math.PI / 2, 1));
                 this.shapes.shark.draw(context, program_state, transform, this.materials.shark)
+            }
+            else if (obj.type === "whale") {
+                transform = transform.times(Mat4.rotation(Math.PI, 0, Math.PI / 4, 1));
+                this.shapes.whale.draw(context, program_state, transform, this.materials.whale)
             }
             else if (obj.type === "coin") {
                 transform = transform.times(Mat4.rotation(Math.PI / 1, 0, 1, 1))
