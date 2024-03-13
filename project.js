@@ -314,7 +314,7 @@ export class project extends Scene {
         });
     
         // Check for collisions between objects and adjust for aquarium bounds for all objects, including coins
-        const aquariumBounds = { minX: -9.5, maxX: 9.5, minY: -4.7, maxY: 4.7, minZ: -9.5, maxZ: 9.5 };
+        const aquariumBounds = { minX: -9.5, maxX: 9.5, minY: -4.2, maxY: 4.7, minZ: -9.5, maxZ: 9.5 };
         this.object_queue.forEach((obj, index) => {
             for (let j = index + 1; j < this.object_queue.length; j++) {
                 const other = this.object_queue[j];
