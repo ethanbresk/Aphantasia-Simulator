@@ -18,7 +18,7 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 4;
+        this.points = 20;
         this.mouse_listener_added = false;
         this.coin_counter = 360;
 
@@ -65,12 +65,22 @@ export class project extends Scene {
                 {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#FFFFFF")}),
             menu_selected: new Material(textured,
                 {ambient: 0.9, diffusivity: .9, specularity: 1, color: hex_color("#1303fc")}),
-            turtle: new Material(textured, {
+            shark: new Material(textured, {
                 ambient: .5,
                 diffusivity: 1,
                 specularity: 1,
+                texture: new Texture("assets/turtle_texture.jpg"),
+                color: color(0.3, 0.3, 0.3, 1)
+            }),
+            turtle: new Material(textured, {
+                ambient: 0.5,
+                diffusivity: 1,
+                specularity: 1,
+                color: color(0, 0.5, 0, 1), // A green tone filter
                 texture: new Texture("assets/turtle_texture.jpg")
             }),
+            
+
             food_texture: new Material(textured, {
                 ambient: .5,
                 diffusivity: 0,
@@ -99,7 +109,7 @@ export class project extends Scene {
         this.fish_states = Array.from({length: this.num_fish}, () => ({
             position: vec3(Math.random() * 10 - 5, Math.random() * 5, Math.random() * 10 - 5), // Random position
             direction: vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(), // Random direction
-            speed: Math.random() * 0.05 + 0.01, // Random speed
+            speed: Math.random() * 0.1 + 0.1, // Random speed
             rotation: Math.random() * 2 * Math.PI // Random rotation around y-axis
         }));
 
@@ -168,7 +178,7 @@ export class project extends Scene {
             // The click is inside the aquarium; spawn the fish
 
             let direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized(); //Math.random()*2-1
-            let speed = Math.random() * (0.5 - 0.05) + 0.05; // Adjusted speed for faster movement
+            let speed = Math.random() * (0.5 - 0.05) + 0.1; // Adjusted speed for faster movement
             let rotation = Math.random() * 2 * Math.PI;
 
             let obj = {
@@ -269,23 +279,33 @@ export class project extends Scene {
     
         let fishToRemove = []; // Hold fish that will be removed due to collisions
     
+
         this.object_queue.forEach((obj, index) => {
             // Exclude coins from random movement, but still move them and check boundaries
             if (obj.type !== "coin") {
                 // Randomize movement for each fish or turtle at defined intervals
                 if (!obj.lastRandomizationTime || currentTime - obj.lastRandomizationTime > movementRandomizationInterval * 1000) {
                     obj.direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized();
-                    obj.speed = Math.random() * 0.05 + 0.01; // Adjust the speed range as needed
-                    obj.rotation = Math.random() * 2 * Math.PI;
+                    obj.speed = Math.random() * 0.05 + 0.01; // Vary speed within a range
+                    obj.rotation = Math.atan2(obj.direction[1], obj.direction[0]); // Update rotation based on direction
                     obj.lastRandomizationTime = currentTime;
                 }
+    
+                // Introduce slight variation in direction and speed for more dynamic movement
+                if (Math.random() < 0.3) { // 30% chance every frame to slightly alter direction and speed
+                    let directionChange = vec3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalized().times(0.2);
+                    obj.direction = obj.direction.plus(directionChange).normalized();
+                    obj.speed = Math.random() * 0.2 + 0.05;  
+                    obj.rotation = Math.atan2(obj.direction[1], obj.direction[0]);
+                }
+    
                 // Move objects based on their speed and direction
                 obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
             }
         });
     
         // Check for collisions between objects and adjust for aquarium bounds for all objects, including coins
-        const aquariumBounds = { minX: -9.7, maxX: 9.7, minY: -4.7, maxY: 4.7, minZ: -9.7, maxZ: 9.7 };
+        const aquariumBounds = { minX: -9.5, maxX: 9.5, minY: -4.7, maxY: 4.7, minZ: -9.5, maxZ: 9.5 };
         this.object_queue.forEach((obj, index) => {
             for (let j = index + 1; j < this.object_queue.length; j++) {
                 const other = this.object_queue[j];
@@ -399,41 +419,101 @@ export class project extends Scene {
 
     
     update_sharks_and_coins(context, program_state) {
-        const coinCollectionThreshold = 0.5; // Distance at which a creature collects a coin
+        const coinCollectionThreshold = 0.8; // Distance at which a creature collects a coin
+        const sharkCollectionThreshold = 2; // Increased threshold for sharks
+        const turtleCollectionThreshold = 1; // Increased threshold for turtles
+        const targetUpdateInterval = 2000; // Interval to update target coin, in milliseconds
+        const randomMovementInterval = 2000; // Interval for random movement direction change, in milliseconds
+        const centerMovementInterval = 10000; // Interval for moving towards the center, in milliseconds
+        const currentTime = program_state.animation_time; // Current time in milliseconds
+        const tankCenter = vec3(0, 0, 0); // Assuming the center of your tank is at the origin
+        const aquariumBounds = {
+            minX: -9.7, maxX: 9.7,
+            minY: -4.7, maxY: 4.7,
+            minZ: -9.7, maxZ: 9.7
+        };
+
+
         this.object_queue.forEach((obj, index) => {
-            // Only proceed if the object is a shark or turtle
-            if (obj.type === "shark" || obj.type === "turtle") {
-                // Find the nearest coin
-                let nearestCoinIndex = -1;
-                let nearestCoinDistance = Infinity;
-                this.object_queue.forEach((coin, coinIndex) => {
-                    if (coin.type === "coin") {
-                        let distance = coin.pos.minus(obj.pos).norm();
-                        if (distance < nearestCoinDistance) {
-                            nearestCoinDistance = distance;
-                            nearestCoinIndex = coinIndex;
+
+           
+            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin") {
+                // Movement and behavior logic unchanged, see previous implementation...
+                
+                // Ensure objects stay within bounds
+                if (obj.pos[0] < aquariumBounds.minX) {
+                    obj.pos[0] = aquariumBounds.minX;
+                    obj.direction[0] = -obj.direction[0];
+                } else if (obj.pos[0] > aquariumBounds.maxX) {
+                    obj.pos[0] = aquariumBounds.maxX;
+                    obj.direction[0] = -obj.direction[0];
+                }
+    
+                if (obj.pos[1] < aquariumBounds.minY) {
+                    obj.pos[1] = aquariumBounds.minY;
+                    obj.direction[1] = -obj.direction[1];
+                } else if (obj.pos[1] > aquariumBounds.maxY) {
+                    obj.pos[1] = aquariumBounds.maxY;
+                    obj.direction[1] = -obj.direction[1];
+                }
+    
+                if (obj.pos[2] < aquariumBounds.minZ) {
+                    obj.pos[2] = aquariumBounds.minZ;
+                    obj.direction[2] = -obj.direction[2];
+                } else if (obj.pos[2] > aquariumBounds.maxZ) {
+                    obj.pos[2] = aquariumBounds.maxZ;
+                    obj.direction[2] = -obj.direction[2];
+                }
+
+                if (obj.type === "shark" || obj.type === "turtle") {
+        
+                    // Periodically change movement direction to simulate more active movement around the tank
+                    if (!obj.lastRandomMovementTime || currentTime - obj.lastRandomMovementTime >= randomMovementInterval) {
+                        obj.direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized();
+                        obj.lastRandomMovementTime = currentTime;
+                    }
+        
+                    // Occasionally direct movement towards the center of the tank
+                    if (!obj.lastCenterMovementTime || currentTime - obj.lastCenterMovementTime >= centerMovementInterval) {
+                        obj.direction = tankCenter.minus(obj.pos).normalized();
+                        obj.lastCenterMovementTime = currentTime;
+                    }
+        
+                    // Set speed: make turtles move faster than sharks
+                    obj.speed = obj.type === "turtle" ? 1 : 0.5; // Increased turtle speed
+        
+                    // Move objects based on their speed and direction
+                    obj.pos = obj.pos.plus(obj.direction.times(obj.speed * program_state.animation_delta_time / 1000));
+                    
+                    // Rotate object towards its movement direction
+                    obj.rotation = Math.atan2(obj.direction[1], obj.direction[0]);
+        
+                    // Check for coin collection
+                    if (obj.targetCoinIndex !== undefined && obj.targetCoinIndex !== -1) {
+                        let targetCoin = this.object_queue[obj.targetCoinIndex];
+                        let distanceToTargetCoin = targetCoin.pos.minus(obj.pos).norm();
+                        let creatureCollectionThreshold = obj.type === "shark" ? sharkCollectionThreshold : turtleCollectionThreshold;
+        
+                        if (distanceToTargetCoin < creatureCollectionThreshold) {
+                            // Collect the coin
+                            this.points += obj.type === "turtle" ? 2 : 4; // Turtles gain 2 points, sharks gain 4
+                            this.object_queue.splice(obj.targetCoinIndex, 1); // Remove the coin
+                            delete obj.targetCoinIndex; // Clear target index
                         }
                     }
-                });
-    
-                if (nearestCoinIndex !== -1 && nearestCoinDistance < coinCollectionThreshold) {
-                    // Collect the coin
-                    if (obj.type === "turtle") {
-                        this.points += 2; // Turtles gain 2 points
-                    } else if (obj.type === "shark") {
-                        this.points += 4; // Sharks gain 4 points
-                    }
-                    this.object_queue.splice(nearestCoinIndex, 1); // Remove the coin
-                } else if (nearestCoinIndex !== -1) {
-                    // Move towards the coin
-                    let directionToCoin = this.object_queue[nearestCoinIndex].pos.minus(obj.pos).normalized();
-                    let speed = (obj.type === "shark" ? 0.07 : 0.05); // Sharks could be faster
-                    obj.pos = obj.pos.plus(directionToCoin.times(speed * program_state.animation_delta_time / 1000));
-                    obj.rotation = Math.atan2(directionToCoin[1], directionToCoin[0]); // Orient creature towards coin
+
+
+
+
+
                 }
             }
         });
     }
+    
+    
+
+    
     
     
 
@@ -562,7 +642,7 @@ export class project extends Scene {
             }
             else if (obj.type === "shark") {
                 transform = transform.times(Mat4.rotation(Math.PI / 1, 0, Math.PI / 2, 1));
-                this.shapes.shark.draw(context, program_state, transform, this.materials.turtle)
+                this.shapes.shark.draw(context, program_state, transform, this.materials.shark)
             }
             else if (obj.type === "coin") {
                 transform = transform.times(Mat4.rotation(Math.PI / 1, 0, 1, 1))
