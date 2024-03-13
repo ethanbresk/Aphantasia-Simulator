@@ -18,9 +18,10 @@ export class project extends Scene {
 
         this.object_queue = [];
         this.fish_to_draw = "nemo";
-        this.points = 20;
+        this.points = 4;
         this.mouse_listener_added = false;
         this.coin_counter = 360;
+        this.show_points_flag = false;
 
         // At the beginning of our program, load one of each of these shape definitions onto the GPU.
         this.shapes = {
@@ -89,6 +90,12 @@ export class project extends Scene {
             }),
             //menubuttons: new Material(textured,
             //{ambient: 0.9, diffusivity: 1, specularity: 1,  texture: new Texture("assets/bubble3.png")}),
+            wood: new Material(textured, {
+                ambient: 0.5,
+                diffusivity: 0,
+                specularity: 0,
+                texture: new Texture("assets/wood2.jpg")
+            }),
         }
 
         // object queue
@@ -127,7 +134,6 @@ export class project extends Scene {
             color: color(0, 0, 225, 225) // Black color for the outline
         });
 
-
         this.materials.aquarium_glass_far = new Material(new defs.Phong_Shader(), {
             color: color(0.4, 0.5, 0.6, 0.1), // Use a lower aslpha value for more transparency
             ambient: 0.2,
@@ -151,7 +157,6 @@ export class project extends Scene {
 
     draw_with_mouse(context, program_state) {
 
-
         let aquarium_bounds = {minX: -10, maxX: 10, minY: -5, maxY: 5, minZ: -10, maxZ: 10};
 
         let obj_color = color(Math.random(), Math.random(), Math.random(), 1.0);
@@ -161,7 +166,6 @@ export class project extends Scene {
         if (this.fish_to_draw === "turtle") { obj_scale = 0.5 }
         if (this.fish_to_draw === "shark") { obj_scale = 1 }
         // Define movement attributes for the new fish
-
 
         // Position calculation as before
         let z_coord = Math.random() * (0.99 - 0.94) + 0.94;
@@ -278,7 +282,6 @@ export class project extends Scene {
         const movementRandomizationInterval = 5; // Interval to randomize movement again, in seconds
     
         let fishToRemove = []; // Hold fish that will be removed due to collisions
-    
 
         this.object_queue.forEach((obj, index) => {
             // Exclude coins from random movement, but still move them and check boundaries
@@ -336,9 +339,6 @@ export class project extends Scene {
         fishToRemove = [...new Set(fishToRemove)].sort((a, b) => b - a); // Remove duplicates and sort in descending order for safe removal
         fishToRemove.forEach(index => this.object_queue.splice(index, 1));
     }
-    
-    
-    
     
     // update_fish(context, program_state) {
     //     const collision_threshold = 0.8; // Adjust based on your scene scale
@@ -433,10 +433,8 @@ export class project extends Scene {
             minZ: -9.7, maxZ: 9.7
         };
 
-
         this.object_queue.forEach((obj, index) => {
 
-           
             if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin") {
                 // Movement and behavior logic unchanged, see previous implementation...
                 
@@ -544,6 +542,7 @@ export class project extends Scene {
             let text_transform = Mat4.identity().times(Mat4.translation(-5,6,-11,0))
             // Sample the "strings" array and draw them onto a cube.
             //this.shapes.text.set_string("Points:" + this.points.toString(), context.context);
+            this.shapes.text.set_string("Points: " + this.points.toString(), context.context);
             this.shapes.text.draw(context, program_state, text_transform, this.text_image);
         } else {
             program_state.set_camera(this.initial_camera_location);
@@ -678,11 +677,85 @@ export class project extends Scene {
 
         let base_transform = Mat4.translation(0, -5 - 0.55, 0) // Move base slightly below the aquarium, adjust Y translation considering the new thickness
             .times(Mat4.scale(11.2, 0.5, 11.2)); // Make the base slightly larger and thicker than before
-
-
         // Draw the base
         this.shapes.box.draw(context, program_state, base_transform, this.materials.silver_material);
 
+        // Draw the floor
+        let floor_transform = Mat4.translation(0, -6 - 0.55, 0)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(20, -6 - 0.55, 20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(0, -6 - 0.55, 20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(0, -6 - 0.55, -20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-20, -6 - 0.55, -20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-20, -6 - 0.55, 20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(20, -6 - 0.55, -20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(20, -6 - 0.55, 0)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-20, -6 - 0.55, 0)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-40, -6 - 0.55, 0)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(40, -6 - 0.55, 0)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(0, -6 - 0.55, -40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(0, -6 - 0.55, 40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(40, -6 - 0.55, 40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-40, -6 - 0.55, 40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(40, -6 - 0.55, -40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-40, -6 - 0.55, -40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-40, -6 - 0.55, -20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-40, -6 - 0.55, 20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(40, -6 - 0.55, -20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(40, -6 - 0.55, 20)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(20, -6 - 0.55, -40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(20, -6 - 0.55, 40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-20, -6 - 0.55, -40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
+        floor_transform = Mat4.translation(-20, -6 - 0.55, 40)
+            .times(Mat4.scale(10, 0.5, 10));
+        this.shapes.box.draw(context, program_state, floor_transform, this.materials.wood);
 
         // Pillar dimensions
         let pillar_height = 5.4;
