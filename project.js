@@ -281,7 +281,9 @@ export class project extends Scene {
 
     update_fish(context, program_state) {
         const collision_threshold = 0.8; // Adjust based on your scene scale
-        const fishCooldownPeriod = 2000; // Cooldown period for fish in milliseconds
+        const sharkCollectionThreshold = 4; // Increased threshold for sharks
+        const turtleCollectionThreshold = 1;
+        const whaleCollectionThreshold = 8;
         const currentTime = program_state.animation_time; // Current time in milliseconds
         const movementRandomizationInterval = 5; // Interval to randomize movement again, in seconds
     
@@ -317,14 +319,15 @@ export class project extends Scene {
             for (let j = index + 1; j < this.object_queue.length; j++) {
                 const other = this.object_queue[j];
                 const distance = obj.pos.minus(other.pos).norm();
-                if (distance < collision_threshold) {
+                let creatureCollectionThreshold = obj.type === "shark" ? sharkCollectionThreshold : obj.type === "turtle" ? turtleCollectionThreshold : obj.type === "whale" ? whaleCollectionThreshold : collision_threshold;
+                if (distance < creatureCollectionThreshold) {
                     // Determine action based on object types
                     if (obj.type === "coin" && other.type !== "coin") {
                         fishToRemove.push(index);
-                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : (other.type === "shark") ? 8 : 1;
+                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : (other.type === "whale") ? 20 : 1;
                     } else if (other.type === "coin" && obj.type !== "coin") {
                         fishToRemove.push(j);
-                        this.points += (other.type === "turtle") ? 2 : (other.type === "shark") ? 4 : (other.type === "shark") ? 8 : 1;
+                        this.points += (obj.type === "turtle") ? 2 : (obj.type === "shark") ? 4 : (obj.type === "whale") ? 20 : 1;
                     }
                 }
             }
@@ -423,11 +426,6 @@ export class project extends Scene {
 
     
     update_sharks_and_coins(context, program_state) {
-        const coinCollectionThreshold = 0.8; // Distance at which a creature collects a coin
-        const whaleCollectionThreshold = 400; // Increased threshold for whales
-        const sharkCollectionThreshold = 2; // Increased threshold for sharks
-        const turtleCollectionThreshold = 1; // Increased threshold for turtles
-        const targetUpdateInterval = 2000; // Interval to update target coin, in milliseconds
         const randomMovementInterval = 2000; // Interval for random movement direction change, in milliseconds
         const centerMovementInterval = 10000; // Interval for moving towards the center, in milliseconds
         const currentTime = program_state.animation_time; // Current time in milliseconds
@@ -440,9 +438,9 @@ export class project extends Scene {
 
         this.object_queue.forEach((obj, index) => {
 
-            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin" || obj.type === "whale") {
+            if (obj.type === "shark" || obj.type === "turtle" || obj.type === "coin") {
                 // Movement and behavior logic unchanged, see previous implementation...
-                //console.log("a")
+                
                 // Ensure objects stay within bounds
                 if (obj.pos[0] < aquariumBounds.minX) {
                     obj.pos[0] = aquariumBounds.minX;
@@ -468,8 +466,8 @@ export class project extends Scene {
                     obj.direction[2] = -obj.direction[2];
                 }
 
-                if (obj.type === "shark" || obj.type === "turtle" || obj.type === "whale") {
-
+                if (obj.type === "shark" || obj.type === "turtle") {
+        
                     // Periodically change movement direction to simulate more active movement around the tank
                     if (!obj.lastRandomMovementTime || currentTime - obj.lastRandomMovementTime >= randomMovementInterval) {
                         obj.direction = vec3(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1).normalized();
@@ -491,33 +489,6 @@ export class project extends Scene {
                     // Rotate object towards its movement direction
                     obj.rotation = Math.atan2(obj.direction[1], obj.direction[0]);
         
-                    // Check for coin collection
-                    if (obj.targetCoinIndex !== undefined && obj.targetCoinIndex !== -1) {
-                        let targetCoin = this.object_queue[obj.targetCoinIndex];
-                        let distanceToTargetCoin = targetCoin.pos.minus(obj.pos).norm();
-                        let creatureCollectionThreshold = 0;
-                        console.log(obj.type)
-                        if (obj.type === "shark") { creatureCollectionThreshold = sharkCollectionThreshold }
-                        else if (obj.type === "whale") {
-                            creatureCollectionThreshold = whaleCollectionThreshold;
-                            console.log("a")
-                        }
-                        else if (obj.type === "turtle") { creatureCollectionThreshold = turtleCollectionThreshold }
-                        //let creatureCollectionThreshold = ((obj.type === "shark") ? sharkCollectionThreshold) : ((obj.type === "whale") ? whaleCollectionThreshold) : (turtleCollectionThreshold);
-        
-                        if (distanceToTargetCoin < creatureCollectionThreshold) {
-                            // Collect the coin
-                            if (obj.type === "shark") { this.points += 2 }
-                            else if (obj.type === "whale") { this.points += 8 }
-                            else if (obj.type === "turtle") { this.points += 4 }
-                            //this.points += obj.type === "turtle" ? 2 : obj.type === "shark" ? 4 : 8; // Turtles gain 2 points, sharks gain 4
-                            this.object_queue.splice(obj.targetCoinIndex, 1); // Remove the coin
-                            delete obj.targetCoinIndex; // Clear target index
-                        }
-                    }
-
-
-
 
 
                 }
@@ -525,10 +496,9 @@ export class project extends Scene {
         });
     }
     
-    
 
-    
-    
+
+
     
 
 
@@ -672,7 +642,7 @@ export class project extends Scene {
         this.update_fish(context, program_state);
         this.update_sharks_and_coins(context, program_state);
 
-
+        //this.update_aquarium_creatures(context, program_state);
         const gl = context.context || context; // Get the WebGL context
 
 
